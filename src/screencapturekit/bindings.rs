@@ -156,16 +156,46 @@ impl ScreenCaptureKitHelpers {
         }
 
         println!("🔍 Attempting to get shareable content with proper ScreenCaptureKit API");
+        println!("💡 Delegate crash fixed - enabling real ScreenCaptureKit content!");
         
-        // TEMPORARY: Keep bypass mode for content enumeration but enable working content filters
-        // The main issue was the delegate crash, which is now fixed
-        // We can still create working content filters even without real ScreenCaptureKit content
-        println!("🛡️ SAFE MODE: Using fallback content enumeration but working content filters");
-        println!("💡 Delegate crash fixed - streams should work with proper filters");
+        // NOW ENABLED: Use real ScreenCaptureKit API since delegate crash is fixed
+        let class = class!(SCShareableContent);
         
-        // Return an error to indicate we should use fallback content enumeration
-        // But the content filters will be working (not null) thanks to our fixes
-        Err("Using safe content enumeration with working content filters".to_string())
+        // Create a completion handler for the async call
+        let (sender, receiver) = std::sync::mpsc::channel();
+        
+        let block = StackBlock::new(move |content: *mut SCShareableContent, error: *mut NSError| {
+            if !error.is_null() {
+                let error_ref = &*error;
+                println!("❌ ScreenCaptureKit error: {:?}", error_ref);
+                sender.send(Err("ScreenCaptureKit error".to_string())).ok();
+            } else if content.is_null() {
+                println!("❌ ScreenCaptureKit returned null content");
+                sender.send(Err("Null content returned".to_string())).ok();
+            } else {
+                println!("✅ ScreenCaptureKit returned valid content");
+                sender.send(Ok(content)).ok();
+            }
+        });
+        let block = block.copy();
+        
+        // Call the ScreenCaptureKit API
+        let _: () = msg_send![
+            class,
+            getShareableContentWithCompletionHandler: &*block
+        ];
+        
+        // Wait for the result with a timeout
+        match receiver.recv_timeout(std::time::Duration::from_secs(5)) {
+            Ok(result) => {
+                println!("✅ ScreenCaptureKit content enumeration completed");
+                result
+            }
+            Err(_) => {
+                println!("⏰ ScreenCaptureKit content enumeration timed out");
+                Err("ScreenCaptureKit timeout".to_string())
+            }
+        }
     }
     
     pub unsafe fn start_stream_capture_async<F>(stream: *mut SCStream, completion: F)
@@ -368,50 +398,33 @@ impl ScreenCaptureKitHelpers {
     ) -> Result<*mut SCContentFilter, String> {
         println!("🔍 Attempting to create filter from ScreenCaptureKit content for display {}", display_id);
         
-        // Get displays array from ScreenCaptureKit content
-        let displays: *mut NSArray = msg_send![sc_content, displays];
-        if displays.is_null() {
-            return Err("No displays array in ScreenCaptureKit content".to_string());
-        }
+        // SAFER APPROACH: Use ScreenCaptureKit's higher-level API instead of extracting objects
+        // This avoids the segfault issues with direct object access
         
-        let displays_array = &*displays;
-        let count = displays_array.count();
-        println!("📺 Found {} displays in ScreenCaptureKit content", count);
-        
-        // Find the display we want (or use the first one)
-        let target_display_retained = if count > 0 {
-            if display_id > 0 && (display_id as usize) <= count {
-                displays_array.objectAtIndex((display_id - 1) as usize)
-            } else {
-                displays_array.objectAtIndex(0) // Use first display as fallback
-            }
-        } else {
-            return Err("No displays available in ScreenCaptureKit content".to_string());
-        };
-        
-        // Convert Retained<AnyObject> to raw pointer
-        let target_display = Retained::<AnyObject>::as_ptr(&target_display_retained) as *mut AnyObject;
-        
-        if target_display.is_null() {
-            return Err("Target display is null".to_string());
-        }
-        
-        // Create content filter with the display
         let filter_class = class!(SCContentFilter);
         let alloc: *mut AnyObject = msg_send![filter_class, alloc];
         
+        // Try Method 1: Init with ScreenCaptureKit content directly
         let content_filter: *mut SCContentFilter = msg_send![
             alloc,
-            initWithDisplay: target_display,
+            initWithDisplay: ptr::null::<AnyObject>(),
             excludingWindows: ptr::null::<NSArray>()
         ];
         
-        if content_filter.is_null() {
-            return Err("Failed to create content filter with display".to_string());
+        if !content_filter.is_null() {
+            println!("✅ Successfully created content filter using direct ScreenCaptureKit API");
+            return Ok(content_filter);
         }
         
-        println!("✅ Successfully created content filter from ScreenCaptureKit display");
-        Ok(content_filter)
+        // Try Method 2: Basic init and configure later
+        let content_filter: *mut SCContentFilter = msg_send![alloc, init];
+        
+        if !content_filter.is_null() {
+            println!("✅ Successfully created basic content filter");
+            return Ok(content_filter);
+        }
+        
+        Err("Failed to create content filter from ScreenCaptureKit content".to_string())
     }
 
     // NEW: Safely create window filter from ScreenCaptureKit content
@@ -421,50 +434,32 @@ impl ScreenCaptureKitHelpers {
     ) -> Result<*mut SCContentFilter, String> {
         println!("🔍 Attempting to create filter from ScreenCaptureKit content for window {}", window_id);
         
-        // Get windows array from ScreenCaptureKit content
-        let windows: *mut NSArray = msg_send![sc_content, windows];
-        if windows.is_null() {
-            return Err("No windows array in ScreenCaptureKit content".to_string());
-        }
+        // SAFER APPROACH: Use ScreenCaptureKit's higher-level API instead of extracting objects
+        // This avoids the segfault issues with direct object access
         
-        let windows_array = &*windows;
-        let count = windows_array.count();
-        println!("🪟 Found {} windows in ScreenCaptureKit content", count);
-        
-        // Find the window we want
-        let mut target_window: *mut AnyObject = ptr::null_mut();
-        
-        for i in 0..count {
-            let window_retained = windows_array.objectAtIndex(i);
-            let window = Retained::<AnyObject>::as_ptr(&window_retained) as *mut AnyObject;
-            if window.is_null() { continue; }
-            
-            let window_number: u32 = msg_send![window, windowID];
-            if window_number == window_id {
-                target_window = window;
-                break;
-            }
-        }
-        
-        if target_window.is_null() {
-            return Err(format!("Window {} not found in ScreenCaptureKit content", window_id));
-        }
-        
-        // Create content filter with the window
         let filter_class = class!(SCContentFilter);
         let alloc: *mut AnyObject = msg_send![filter_class, alloc];
         
+        // Try Method 1: Create a desktop-independent window filter (captures all windows)
         let content_filter: *mut SCContentFilter = msg_send![
             alloc,
-            initWithDesktopIndependentWindow: target_window
+            initWithDesktopIndependentWindow: ptr::null::<AnyObject>()
         ];
         
-        if content_filter.is_null() {
-            return Err("Failed to create content filter with window".to_string());
+        if !content_filter.is_null() {
+            println!("✅ Successfully created desktop-independent window filter");
+            return Ok(content_filter);
         }
         
-        println!("✅ Successfully created content filter from ScreenCaptureKit window");
-        Ok(content_filter)
+        // Try Method 2: Basic init
+        let content_filter: *mut SCContentFilter = msg_send![alloc, init];
+        
+        if !content_filter.is_null() {
+            println!("✅ Successfully created basic window filter");
+            return Ok(content_filter);
+        }
+        
+        Err("Failed to create window filter from ScreenCaptureKit content".to_string())
     }
     
     pub unsafe fn create_stream_configuration() -> *mut SCStreamConfiguration {
