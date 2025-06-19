@@ -63,10 +63,10 @@ impl ContentManager {
     }
 }
 
-// Export RealContentFilter as NAPI class
+// Export ContentFilter as NAPI class
 #[napi]
 pub struct RealContentFilter {
-    inner: screencapturekit::content::RealContentFilter,
+    inner: screencapturekit::filters::ContentFilter,
 }
 
 #[napi]
@@ -74,8 +74,10 @@ impl RealContentFilter {
     #[napi(constructor)]
     pub fn new() -> Result<Self> {
         // Create a default filter - this would need proper initialization in real usage
-        let content = screencapturekit::content::ShareableContent::new_with_real_data()?;
-        let inner = screencapturekit::content::RealContentFilter::new_with_display(&content, 1)?;
+        let content = screencapturekit::content::ShareableContent::new_with_screencapturekit()?;
+        let inner = screencapturekit::filters::ContentFilterFactory::create_display_filter(
+            content.get_sc_content_ptr(), 1
+        )?;
         Ok(Self { inner })
     }
     
@@ -92,18 +94,18 @@ impl RealContentFilter {
     }
 }
 
-// Export RealStreamManager as NAPI class
+// Export RecordingManager as NAPI class
 #[napi]
 #[allow(dead_code)]
 pub struct RealStreamManager {
-    inner: screencapturekit::content::RealStreamManager,
+    inner: screencapturekit::recording::RecordingManager,
 }
 
 #[napi]
 impl RealStreamManager {
     #[napi(constructor)]
     pub fn new() -> Result<Self> {
-        let inner = screencapturekit::content::RealStreamManager::new();
+        let inner = screencapturekit::recording::RecordingManager::new();
         Ok(Self { inner })
     }
     
@@ -184,7 +186,7 @@ pub struct WindowInfo {
 // Export ShareableContent as NAPI class - FIXED to remove segfault methods
 #[napi]
 pub struct ShareableContent {
-    inner: screencapturekit::ShareableContent,
+    inner: screencapturekit::content::ShareableContent,
 }
 
 #[napi]
@@ -354,7 +356,7 @@ impl ScreenCaptureKitRecorder {
     #[napi]
     pub fn get_available_audio_devices(&self) -> Result<Vec<AudioDevice>> {
         println!("🔊 Getting available audio devices via AVFoundation");
-        screencapturekit::AudioManager::get_available_audio_devices()
+        screencapturekit::audio::AudioManager::get_available_audio_devices()
     }
 
     #[napi]
@@ -366,10 +368,10 @@ impl ScreenCaptureKitRecorder {
         println!("🎬 Starting ScreenCaptureKit recording with screen_id: {}", screen_id);
         println!("📁 Output path: {}", config.output_path);
         
-        let content = match &self.current_content {
+                    let content = match &self.current_content {
             Some(content) => content,
             None => {
-                let content = screencapturekit::content::ShareableContent::new_with_real_data()?;
+                let content = screencapturekit::content::ShareableContent::new_with_screencapturekit()?;
                 self.current_content = Some(content);
                 self.current_content.as_ref().unwrap()
             }
@@ -379,7 +381,7 @@ impl ScreenCaptureKitRecorder {
         let content_filter = self.create_real_content_filter_safe(content, &screen_id)?;
         
         // Create real stream manager and start recording
-        let mut stream_manager = screencapturekit::content::RealStreamManager::new();
+        let mut stream_manager = screencapturekit::recording::RecordingManager::new();
         stream_manager.start_recording(content_filter, config)?;
         
         // Store the stream manager (in a real implementation, this would be a field)
@@ -442,7 +444,7 @@ impl ScreenCaptureKitRecorder {
         &self,
         content: &screencapturekit::content::ShareableContent,
         screen_id: &str,
-    ) -> Result<screencapturekit::content::RealContentFilter> {
+    ) -> Result<screencapturekit::filters::ContentFilter> {
         println!("🎯 Creating real content filter for screen: {} (segfault-safe)", screen_id);
         
         if screen_id.starts_with("display:") {
@@ -450,14 +452,18 @@ impl ScreenCaptureKitRecorder {
                 .map_err(|_| Error::new(Status::InvalidArg, "Invalid display ID"))?;
             
             println!("✅ Creating segfault-safe display content filter for ScreenCaptureKit");
-            screencapturekit::content::RealContentFilter::new_with_display(content, display_id)
+            screencapturekit::filters::ContentFilterFactory::create_display_filter(
+                content.get_sc_content_ptr(), display_id
+            )
             
         } else if screen_id.starts_with("window:") {
             let window_id: u32 = screen_id[7..].parse()
                 .map_err(|_| Error::new(Status::InvalidArg, "Invalid window ID"))?;
             
             println!("✅ Creating segfault-safe window content filter for ScreenCaptureKit");
-            screencapturekit::content::RealContentFilter::new_with_window(content, window_id)
+            screencapturekit::filters::ContentFilterFactory::create_window_filter(
+                content.get_sc_content_ptr(), window_id
+            )
             
         } else {
             Err(Error::new(Status::InvalidArg, "Invalid screen ID format"))
@@ -471,7 +477,7 @@ pub fn init_screencapturekit() -> Result<()> {
     println!("🎯 Real implementation with actual ScreenCaptureKit APIs (segfault-safe)");
     
     // Configure audio session with real AVFoundation
-    screencapturekit::AudioManager::configure_audio_session()?;
+    screencapturekit::audio::AudioManager::configure_audio_session()?;
     
     Ok(())
 }
@@ -484,7 +490,7 @@ pub fn get_version() -> String {
 #[napi]
 pub fn check_screen_recording_permission() -> Result<bool> {
     unsafe {
-        let has_permission = screencapturekit::bindings::ScreenCaptureKitHelpers::check_screen_recording_permission();
+        let has_permission = screencapturekit::permissions::PermissionManager::check_permission() == screencapturekit::types::PermissionStatus::Granted;
         Ok(has_permission)
     }
 }
@@ -492,7 +498,8 @@ pub fn check_screen_recording_permission() -> Result<bool> {
 #[napi]
 pub fn request_screen_recording_permission() -> Result<bool> {
     unsafe {
-        let has_permission = screencapturekit::bindings::ScreenCaptureKitHelpers::request_screen_recording_permission();
+        let has_permission = screencapturekit::permissions::PermissionManager::request_permission()
+            .unwrap_or(screencapturekit::types::PermissionStatus::Denied) == screencapturekit::types::PermissionStatus::Granted;
         Ok(has_permission)
     }
 }
@@ -557,7 +564,7 @@ pub fn test_permissions_and_api() -> Result<String> {
     
     // Test 3: Test basic ScreenCaptureKit API access
     unsafe {
-        match screencapturekit::bindings::ScreenCaptureKitHelpers::get_shareable_content_sync() {
+        match screencapturekit::content::ContentManager::get_shareable_content_sync() {
             Ok(_) => {
                 results.push("✅ ScreenCaptureKit API: Accessible (sync)".to_string());
             }
@@ -670,7 +677,9 @@ pub fn test_phase2_implementation() -> Result<String> {
     
     // Test 2: Create real content filter (segfault-safe)
     println!("🎯 Test 2: Segfault-safe content filter creation");
-    let display_filter = screencapturekit::content::RealContentFilter::new_with_display(&content, 1)?;
+    let display_filter = screencapturekit::filters::ContentFilterFactory::create_display_filter(
+        content.get_sc_content_ptr(), 1
+    )?;
     
     // Skip window filter test to avoid potential issues
     let display_valid = display_filter.is_valid();
@@ -679,7 +688,7 @@ pub fn test_phase2_implementation() -> Result<String> {
     
     // Test 3: Create real stream manager (safe)
     println!("🎬 Test 3: Real stream manager creation");
-    let _stream_manager = screencapturekit::content::RealStreamManager::new();
+    let _stream_manager = screencapturekit::recording::RecordingManager::new();
     println!("✅ Created real stream manager");
     
     // Test 4: Test delegate creation (safe) - Skip for now to avoid encoder panics
@@ -741,26 +750,26 @@ impl AudioManager {
     
     #[napi]
     pub fn get_available_audio_devices(&self) -> Result<Vec<AudioDevice>> {
-        screencapturekit::AudioManager::get_available_audio_devices()
+        screencapturekit::audio::AudioManager::get_available_audio_devices()
     }
     
     #[napi]
     pub fn configure_audio_session(&self) -> Result<()> {
-        screencapturekit::AudioManager::configure_audio_session()
+        screencapturekit::audio::AudioManager::configure_audio_session()
     }
 }
 
 // Export the new integrated RecordingManager that saves working audio/video files
 #[napi]
 pub struct IntegratedRecordingManager {
-    inner: screencapturekit::RecordingManager,
+    inner: screencapturekit::recording::RecordingManager,
 }
 
 #[napi]
 impl IntegratedRecordingManager {
     #[napi(constructor)]
     pub fn new() -> Result<Self> {
-        let inner = screencapturekit::RecordingManager::new()?;
+        let inner = screencapturekit::recording::RecordingManager::new();
         Ok(Self { inner })
     }
     

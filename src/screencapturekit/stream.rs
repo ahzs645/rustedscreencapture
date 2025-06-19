@@ -6,7 +6,8 @@ use objc2::{msg_send, class};
 use objc2_foundation::{NSArray, NSString, NSDictionary, NSNumber};
 use std::ptr;
 
-use super::bindings::{SCShareableContent, SCDisplay, SCWindow, SCContentFilter, ScreenCaptureKitHelpers};
+use super::types::{SCShareableContent, SCDisplay, SCWindow, SCContentFilter};
+use super::bindings::ScreenCaptureKitAPI;
 
 pub struct ContentManager;
 

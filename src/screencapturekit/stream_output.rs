@@ -8,7 +8,7 @@ use objc2_core_video::{CVPixelBuffer};
 use objc2_av_foundation::{AVAssetWriter, AVAssetWriterInput, AVAssetWriterInputPixelBufferAdaptor};
 use napi::{Result, Status, Error};
 
-use super::bindings::{SCStream, SCStreamOutputType};
+use super::types::{SCStream, SCStreamOutputType};
 
 // External CoreMedia functions
 extern "C" {

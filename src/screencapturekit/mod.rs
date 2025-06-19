@@ -29,8 +29,10 @@ pub use content::{ContentManager, ShareableContent};
 pub use recording::RecordingManager;
 pub use permissions::PermissionManager;
 pub use filters::{ContentFilter, ContentFilterFactory};
+pub use types::{DisplayInfo, WindowInfo, SCStream, SCStreamConfiguration, SCStreamOutputType, SCContentFilter, SCShareableContent, SCDisplay, SCWindow};
+pub use bindings::ScreenCaptureKitAPI;
 
 // Legacy compatibility exports (can be removed later)
-pub use recording_manager::RealStreamManager;
+// pub use recording_manager::RealStreamManager;  // Disabled - using new RecordingManager
 pub use stream_output::StreamOutput;
  

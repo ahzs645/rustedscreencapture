@@ -5,11 +5,14 @@ use napi::{Result, Status, Error};
 use objc2_core_media::CMSampleBuffer;
 
 use super::{
-    content::{ShareableContent, RealContentFilter, DisplayInfo, WindowInfo},
+    content::ShareableContent,
+    types::{DisplayInfo, WindowInfo},
+    filters::ContentFilter,
     stream_output::StreamOutput,
     permission_manager::PermissionManager,
     transcription::{TranscriptionManager, TranscriptionConfig, TranscriptionResult},
-    bindings::{SCStream, SCStreamConfiguration, SCStreamOutputType, ScreenCaptureKitHelpers},
+    types::{SCStream, SCStreamConfiguration, SCStreamOutputType},
+    bindings::ScreenCaptureKitAPI,
 };
 use crate::RecordingConfiguration;
 

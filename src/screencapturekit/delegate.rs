@@ -7,7 +7,7 @@ use objc2_core_video::{CVImageBuffer, CVPixelBuffer};
 use napi::{Result, Status, Error};
 
 // use super::encoder::{VideoEncoder, AudioEncoder};  // DISABLED: Encoder module disabled
-use super::bindings::{SCStream, SCStreamDelegate, SCStreamOutputType};
+use super::types::{SCStream, SCStreamDelegate, SCStreamOutputType};
 
 // Real SCStreamDelegate implementation using objc2 bindings
 pub struct RealStreamDelegate {

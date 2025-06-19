@@ -8,7 +8,7 @@ use objc2_core_media::{CMSampleBuffer, CMTime};
 use block2::{Block, StackBlock};
 use std::ptr;
 
-use super::types::*;
+pub use super::types::*;
 use super::foundation::CGRect;
 
 /// Raw ScreenCaptureKit API bindings
