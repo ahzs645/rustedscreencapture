@@ -1,6 +1,6 @@
-# ScreenCaptureKit Rust
+# RustedScreenCapture
 
-[![npm version](https://badge.fury.io/js/%40whisperdesk%2Fscreencapturekit-rust.svg)](https://badge.fury.io/js/%40whisperdesk%2Fscreencapturekit-rust)
+[![npm version](https://badge.fury.io/js/%40firstform%2Frustedscreencapture.svg)](https://badge.fury.io/js/%40firstform%2Frustedscreencapture)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 A safe, Rust-based ScreenCaptureKit implementation for macOS with a bypass approach that eliminates segfaults while providing reliable screen enumeration and capture capabilities.
@@ -20,7 +20,7 @@ This package implements a **complete bypass approach** to avoid ScreenCaptureKit
 ## 📦 Installation
 
 ```bash
-npm install @whisperdesk/screencapturekit-rust
+npm install @firstform/rustedscreencapture
 ```
 
 ### Requirements
@@ -34,7 +34,7 @@ npm install @whisperdesk/screencapturekit-rust
 ### Basic Screen Enumeration
 
 ```javascript
-const { ScreenCaptureKitRecorder } = require('@whisperdesk/screencapturekit-rust');
+const { ScreenCaptureKitRecorder } = require('@firstform/rustedscreencapture');
 
 // Create recorder instance
 const recorder = new ScreenCaptureKitRecorder();
@@ -81,7 +81,7 @@ try {
 const { 
     checkScreenRecordingPermission, 
     requestScreenRecordingPermission 
-} = require('@whisperdesk/screencapturekit-rust');
+} = require('@firstform/rustedscreencapture');
 
 // Check current permission status
 const hasPermission = checkScreenRecordingPermission();
@@ -189,8 +189,8 @@ This package implements a complete bypass approach to avoid ScreenCaptureKit com
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/screencapturekit-rust.git
-cd screencapturekit-rust
+git clone https://github.com/firstform/rustedscreencapture.git
+cd rustedscreencapture
 
 # Install dependencies
 npm install
@@ -268,7 +268,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 If you encounter any issues or have questions:
 
-1. Check the [Issues](https://github.com/your-username/screencapturekit-rust/issues) page
+1. Check the [Issues](https://github.com/firstform/rustedscreencapture/issues) page
 2. Create a new issue with detailed information
 3. Include your macOS version and Node.js version
 4. Provide steps to reproduce any problems

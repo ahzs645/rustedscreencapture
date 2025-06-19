@@ -1,5 +1,5 @@
 {
-  "name": "@whisperdesk/screencapturekit-rust",
+  "name": "@firstform/rustedscreencapture",
   "version": "1.0.0",
   "description": "Rust-based ScreenCaptureKit implementation with bypass approach for safe screen capture on macOS",
   "main": "index.js",
@@ -36,17 +36,19 @@
     "rust",
     "napi",
     "bypass",
-    "safe"
+    "safe",
+    "rustedscreencapture",
+    "firstform"
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/your-username/screencapturekit-rust.git"
+    "url": "https://github.com/firstform/rustedscreencapture.git"
   },
-  "author": "Your Name <your.email@example.com>",
+  "author": "FirstForm",
   "bugs": {
-    "url": "https://github.com/your-username/screencapturekit-rust/issues"
+    "url": "https://github.com/firstform/rustedscreencapture/issues"
   },
-  "homepage": "https://github.com/your-username/screencapturekit-rust#readme",
+  "homepage": "https://github.com/firstform/rustedscreencapture#readme",
   "os": [
     "darwin"
   ],
@@ -58,5 +60,11 @@
     "index.d.ts",
     "index.js",
     "*.node"
-  ]
-} 
+  ],
+  "optionalDependencies": {
+    "@firstform/rustedscreencapture-win32-x64-msvc": "1.0.0",
+    "@firstform/rustedscreencapture-darwin-x64": "1.0.0",
+    "@firstform/rustedscreencapture-linux-x64-gnu": "1.0.0",
+    "@firstform/rustedscreencapture-darwin-arm64": "1.0.0"
+  }
+}
