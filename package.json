@@ -1,0 +1,62 @@
+{
+  "name": "@whisperdesk/screencapturekit-rust",
+  "version": "1.0.0",
+  "description": "Rust-based ScreenCaptureKit implementation with bypass approach for safe screen capture on macOS",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "napi": {
+    "name": "screencapturekit-rust",
+    "triples": {
+      "defaults": true,
+      "additional": [
+        "aarch64-apple-darwin",
+        "x86_64-apple-darwin"
+      ]
+    }
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@napi-rs/cli": "^2.18.4"
+  },
+  "engines": {
+    "node": ">= 10"
+  },
+  "scripts": {
+    "artifacts": "napi artifacts",
+    "build": "napi build --platform --release",
+    "build:debug": "napi build --platform",
+    "prepublishOnly": "napi prepublish -t npm",
+    "test": "node test/test-basic.js",
+    "version": "napi version"
+  },
+  "keywords": [
+    "screencapturekit",
+    "macos",
+    "screen-capture",
+    "rust",
+    "napi",
+    "bypass",
+    "safe"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/screencapturekit-rust.git"
+  },
+  "author": "Your Name <your.email@example.com>",
+  "bugs": {
+    "url": "https://github.com/your-username/screencapturekit-rust/issues"
+  },
+  "homepage": "https://github.com/your-username/screencapturekit-rust#readme",
+  "os": [
+    "darwin"
+  ],
+  "cpu": [
+    "x64",
+    "arm64"
+  ],
+  "files": [
+    "index.d.ts",
+    "index.js",
+    "*.node"
+  ]
+} 
