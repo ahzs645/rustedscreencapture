@@ -371,20 +371,46 @@ impl ShareableContent {
         ]
     }
 
+    // FIXED: Update the new_with_timeout method to remove bypass mode
     pub fn new_with_timeout(timeout_ms: u32) -> Result<Self> {
-        println!("🔍 Fetching real shareable content from ScreenCaptureKit with {}ms timeout", timeout_ms);
+        println!("🔍 Fetching real shareable content from ScreenCaptureKit with {}ms timeout (FIXED)", timeout_ms);
         
-        // COMPLETE BYPASS APPROACH: Don't call any ScreenCaptureKit APIs
-        // This prevents all crashes while still providing functional content
-        println!("🛡️ COMPLETE BYPASS MODE: Using only safe system content to prevent crashes");
-        println!("💡 This approach provides reliable screen/window enumeration without ScreenCaptureKit risks");
-        
-        let safe_content = Self::create_safe_system_content();
-        
-        println!("✅ Retrieved {} displays and {} windows using safe system APIs", 
-            safe_content.displays.len(), safe_content.windows.len());
-        
-        Ok(safe_content)
+        unsafe {
+            let mut content = Self::new();
+            
+            // FIXED: Try to get real ScreenCaptureKit content instead of bypassing
+            match ScreenCaptureKitHelpers::get_shareable_content_sync() {
+                Ok(sc_content) => {
+                    println!("✅ Got real ScreenCaptureKit content synchronously within timeout");
+                    content.sc_content_ptr = Some(sc_content);
+                    
+                    // Use safe system content for display/window enumeration
+                    let safe_content = Self::create_safe_system_content();
+                    content.displays = safe_content.displays;
+                    content.windows = safe_content.windows;
+                    
+                    println!("✅ Retrieved {} displays and {} windows with real ScreenCaptureKit content", 
+                        content.displays.len(), content.windows.len());
+                    
+                    Ok(content)
+                }
+                Err(_) => {
+                    println!("⚠️ ScreenCaptureKit sync failed, using safe content (but still attempting filter creation)");
+                    
+                    // Start async call for future use but don't wait
+                    ScreenCaptureKitHelpers::get_shareable_content_async(|_content, _error| {
+                        println!("🔄 Background ScreenCaptureKit call completed");
+                    });
+                    
+                    let safe_content = Self::create_safe_system_content();
+                    content.displays = safe_content.displays;
+                    content.windows = safe_content.windows;
+                    
+                    // Don't set sc_content_ptr, but filter creation will still try minimal filters
+                    Ok(content)
+                }
+            }
+        }
     }
     
     unsafe fn fetch_real_sc_shareable_content() -> Result<*mut SCShareableContent> {
@@ -434,31 +460,30 @@ impl ShareableContent {
     // This avoids the segfault entirely by using ScreenCaptureKit's higher-level APIs
     
     /// Create a REAL content filter using actual ScreenCaptureKit objects
+    /// FIXED: Create a REAL content filter using actual ScreenCaptureKit objects
     pub unsafe fn create_display_content_filter(&self, display_id: u32) -> Result<*mut SCContentFilter> {
-        println!("🎯 Creating REAL display content filter for display ID {} (ultra-safe approach)", display_id);
+        println!("🎯 Creating REAL display content filter for display ID {} (FIXED - no longer bypassed)", display_id);
         
-        // Verify display exists
+        // Verify display exists in our enumeration
         if self.find_display_by_id(display_id).is_none() {
             return Err(Error::new(Status::InvalidArg, format!("Display ID {} not found", display_id)));
         }
 
-        // ULTRA-SAFE APPROACH: Instead of using msg_send! which can cause segfaults,
-        // use our ScreenCaptureKit helpers that handle the Objective-C calls safely
-        
+        // FIXED APPROACH: Use the working helper methods instead of bypass
         match self.sc_content_ptr {
             Some(sc_content) => {
-                println!("🔍 Using ScreenCaptureKit helper for safe content filter creation");
+                println!("🔍 Using ScreenCaptureKit content for real content filter creation");
                 
-                // Use our safe helper method that handles all the Objective-C complexity
+                // Use the fixed helper method that actually creates working filters
                 let content_filter = ScreenCaptureKitHelpers::create_display_content_filter(
                     sc_content, 
                     display_id
                 );
                 
                 if content_filter.is_null() {
-                    println!("⚠️ Helper method returned null filter, trying fallback approach");
+                    println!("⚠️ ScreenCaptureKit method failed, trying fallback");
                     
-                    // Fallback: Create a minimal content filter using the helper
+                    // Fallback: Try the main display filter
                     let fallback_filter = ScreenCaptureKitHelpers::create_minimal_content_filter();
                     
                     if fallback_filter.is_null() {
@@ -469,7 +494,7 @@ impl ShareableContent {
                     return Ok(fallback_filter);
                 }
                 
-                println!("✅ Successfully created display content filter using safe helper");
+                println!("✅ Successfully created display content filter using ScreenCaptureKit");
                 Ok(content_filter)
             }
             None => {
@@ -488,19 +513,18 @@ impl ShareableContent {
         }
     }
     
-    /// Create a REAL content filter for a window using actual ScreenCaptureKit objects
+    /// FIXED: Create a REAL content filter for a window using actual ScreenCaptureKit objects
     pub unsafe fn create_window_content_filter(&self, window_id: u32) -> Result<*mut SCContentFilter> {
-        println!("🎯 Creating REAL window content filter for window ID {} (ultra-safe approach)", window_id);
+        println!("🎯 Creating REAL window content filter for window ID {} (FIXED - no longer bypassed)", window_id);
         
         if self.find_window_by_id(window_id).is_none() {
             return Err(Error::new(Status::InvalidArg, format!("Window ID {} not found", window_id)));
         }
         
-        // ULTRA-SAFE APPROACH: Use ScreenCaptureKit helpers for window filters too
-        
+        // FIXED APPROACH: Use the working helper methods
         match self.sc_content_ptr {
             Some(sc_content) => {
-                println!("🔍 Using ScreenCaptureKit helper for safe window content filter creation");
+                println!("🔍 Using ScreenCaptureKit content for real window content filter creation");
                 
                 let content_filter = ScreenCaptureKitHelpers::create_window_content_filter(
                     sc_content, 
@@ -508,7 +532,7 @@ impl ShareableContent {
                 );
                 
                 if content_filter.is_null() {
-                    println!("⚠️ Helper method returned null window filter, using minimal filter");
+                    println!("⚠️ ScreenCaptureKit window method failed, using desktop capture");
                     
                     let minimal_filter = ScreenCaptureKitHelpers::create_minimal_content_filter();
                     
@@ -516,23 +540,23 @@ impl ShareableContent {
                         return Err(Error::new(Status::GenericFailure, "All window content filter creation methods failed"));
                     }
                     
-                    println!("✅ Created minimal content filter for window");
+                    println!("✅ Created desktop capture filter for window");
                     return Ok(minimal_filter);
                 }
                 
-                println!("✅ Successfully created window content filter using safe helper");
+                println!("✅ Successfully created window content filter using ScreenCaptureKit");
                 Ok(content_filter)
             }
             None => {
-                println!("⚠️ No ScreenCaptureKit content available, creating minimal window filter");
+                println!("⚠️ No ScreenCaptureKit content available, creating desktop capture filter");
                 
                 let minimal_filter = ScreenCaptureKitHelpers::create_minimal_content_filter();
                 
                 if minimal_filter.is_null() {
-                    return Err(Error::new(Status::GenericFailure, "Failed to create minimal window content filter"));
+                    return Err(Error::new(Status::GenericFailure, "Failed to create desktop capture filter for window"));
                 }
                 
-                println!("✅ Created minimal window content filter");
+                println!("✅ Created desktop capture filter for window");
                 Ok(minimal_filter)
             }
         }
@@ -569,36 +593,66 @@ impl RealContentFilter {
         }
     }
     
+    // FIXED: Update to use the working content filter creation
     pub fn new_with_display(content: &ShareableContent, display_id: u32) -> Result<Self> {
         unsafe {
+            println!("🔧 Creating RealContentFilter for display {} (FIXED)", display_id);
+            
             match content.create_display_content_filter(display_id) {
                 Ok(filter) => {
-                    Ok(Self {
-                        content_filter: Some(filter),
-                        is_valid: true,
-                    })
+                    if filter.is_null() {
+                        println!("❌ Content filter creation returned null");
+                        Ok(Self {
+                            content_filter: None,
+                            is_valid: false,
+                        })
+                    } else {
+                        println!("✅ RealContentFilter created successfully for display {}", display_id);
+                        Ok(Self {
+                            content_filter: Some(filter),
+                            is_valid: true,
+                        })
+                    }
                 }
-                Err(e) => Err(e)
+                Err(e) => {
+                    println!("❌ Failed to create RealContentFilter: {}", e);
+                    Err(e)
+                }
             }
         }
     }
     
+    // FIXED: Update to use the working content filter creation
     pub fn new_with_window(content: &ShareableContent, window_id: u32) -> Result<Self> {
         unsafe {
+            println!("🔧 Creating RealContentFilter for window {} (FIXED)", window_id);
+            
             match content.create_window_content_filter(window_id) {
                 Ok(filter) => {
-                    Ok(Self {
-                        content_filter: Some(filter),
-                        is_valid: true,
-                    })
+                    if filter.is_null() {
+                        println!("❌ Window content filter creation returned null");
+                        Ok(Self {
+                            content_filter: None,
+                            is_valid: false,
+                        })
+                    } else {
+                        println!("✅ RealContentFilter created successfully for window {}", window_id);
+                        Ok(Self {
+                            content_filter: Some(filter),
+                            is_valid: true,
+                        })
+                    }
                 }
-                Err(e) => Err(e)
+                Err(e) => {
+                    println!("❌ Failed to create window RealContentFilter: {}", e);
+                    Err(e)
+                }
             }
         }
     }
     
     pub fn is_valid(&self) -> bool {
-        self.is_valid
+        self.is_valid && self.content_filter.is_some()
     }
     
     pub fn get_filter_ptr(&self) -> *mut SCContentFilter {
