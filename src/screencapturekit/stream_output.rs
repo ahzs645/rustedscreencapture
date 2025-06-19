@@ -236,19 +236,34 @@ impl StreamOutput {
         // Finalize the recording if we have an active writer
         if let Some(asset_writer) = self.asset_writer {
             unsafe {
-                // Mark inputs as finished
-                if let Some(video_input) = self.video_input {
-                    let _: () = msg_send![video_input, markAsFinished];
-                }
-                if let Some(audio_input) = self.audio_input {
-                    let _: () = msg_send![audio_input, markAsFinished];
-                }
+                // Check the writer status before trying to finalize
+                let status: i32 = msg_send![asset_writer, status];
+                println!("📊 AVAssetWriter status: {}", status);
                 
-                // Finish writing
-                let _: () = msg_send![asset_writer, finishWriting];
-                
-                println!("✅ Recording finalized successfully");
+                // Only finalize if the writer is in a valid state
+                // Status: 0 = Unknown, 1 = Writing, 2 = Completed, 3 = Failed, 4 = Cancelled
+                if status == 1 { // AVAssetWriterStatusWriting
+                    println!("✅ Writer is in writing state, safe to finalize");
+                    
+                    // Mark inputs as finished
+                    if let Some(video_input) = self.video_input {
+                        let _: () = msg_send![video_input, markAsFinished];
+                    }
+                    if let Some(audio_input) = self.audio_input {
+                        let _: () = msg_send![audio_input, markAsFinished];
+                    }
+                    
+                    // Finish writing
+                    let _: () = msg_send![asset_writer, finishWriting];
+                    
+                    println!("✅ Recording finalized successfully");
+                } else {
+                    println!("⚠️ Writer not in writing state (status: {}), skipping finalization", status);
+                    println!("💡 This is expected when stream failed to start");
+                }
             }
+        } else {
+            println!("⚠️ No asset writer to finalize");
         }
         
         // Print final statistics
@@ -263,9 +278,17 @@ impl StreamOutput {
             if !*is_recording {
                 if let Some(asset_writer) = self.asset_writer {
                     unsafe {
+                        // Check current status first
+                        let status: i32 = msg_send![asset_writer, status];
+                        println!("📊 AVAssetWriter status before starting: {}", status);
+                        
                         // Start the writing session
                         let started: bool = msg_send![asset_writer, startWriting];
                         if !started {
+                            let error: *mut NSError = msg_send![asset_writer, error];
+                            if !error.is_null() {
+                                println!("❌ AVAssetWriter error: {:?}", &*error);
+                            }
                             return Err(Error::new(Status::GenericFailure, "Failed to start writing session"));
                         }
                         
@@ -275,6 +298,7 @@ impl StreamOutput {
                         // Start session at source time
                         let _: () = msg_send![asset_writer, startSessionAtSourceTime: start_time];
                         
+                        *is_recording = true;
                         println!("✅ Recording session started successfully");
                     }
                 }

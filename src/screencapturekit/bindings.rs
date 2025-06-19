@@ -157,14 +157,15 @@ impl ScreenCaptureKitHelpers {
 
         println!("🔍 Attempting to get shareable content with proper ScreenCaptureKit API");
         
-        // BYPASS APPROACH: Don't try to call ScreenCaptureKit APIs that cause crashes
-        // Instead, return an error that indicates we should use fallback content
-        println!("🛡️ BYPASS MODE: Avoiding ScreenCaptureKit API calls to prevent crashes");
-        println!("💡 This is the safest approach - use fallback content instead");
+        // TEMPORARY: Keep bypass mode for content enumeration but enable working content filters
+        // The main issue was the delegate crash, which is now fixed
+        // We can still create working content filters even without real ScreenCaptureKit content
+        println!("🛡️ SAFE MODE: Using fallback content enumeration but working content filters");
+        println!("💡 Delegate crash fixed - streams should work with proper filters");
         
-        // Return an error to indicate we should use fallback content
-        // This prevents any crashes while still allowing the system to work
-        Err("ScreenCaptureKit API bypassed for safety - using fallback content".to_string())
+        // Return an error to indicate we should use fallback content enumeration
+        // But the content filters will be working (not null) thanks to our fixes
+        Err("Using safe content enumeration with working content filters".to_string())
     }
     
     pub unsafe fn start_stream_capture_async<F>(stream: *mut SCStream, completion: F)
@@ -549,34 +550,29 @@ impl ScreenCaptureKitHelpers {
         ptr::null_mut()
     }
     
-    // Pattern 1: Deferred Delegate Assignment
+    // Pattern 1: Direct Delegate Assignment (FIXED)
     unsafe fn create_sc_stream_deferred_delegate(
         filter: *mut SCContentFilter, 
         configuration: *mut SCStreamConfiguration,
         delegate: *mut AnyObject
     ) -> Result<*mut SCStream, String> {
-        println!("🔧 Pattern 1: Creating stream without delegate first, then assigning");
+        println!("🔧 Pattern 1: Creating stream with delegate during initialization (FIXED)");
         
-        // Step 1: Create stream WITHOUT delegate
+        // FIXED: Pass delegate during initialization, not afterward
         let class = class!(SCStream);
         let alloc: *mut AnyObject = msg_send![class, alloc];
         let stream: *mut SCStream = msg_send![
             alloc,
             initWithFilter: filter,
             configuration: configuration,
-            delegate: ptr::null::<AnyObject>()  // ← NULL delegate initially
+            delegate: delegate  // ← Pass delegate during init (FIXED)
         ];
         
         if stream.is_null() {
-            return Err("Failed to create SCStream in deferred delegate pattern".to_string());
+            return Err("Failed to create SCStream with delegate during init".to_string());
         }
         
-        // Step 2: Assign delegate AFTER stream creation (if provided)
-        if !delegate.is_null() {
-            let _: () = msg_send![stream, setDelegate: delegate];
-            println!("✅ Delegate assigned after stream creation");
-        }
-        
+        println!("✅ SCStream created with delegate during initialization");
         Ok(stream)
     }
     
