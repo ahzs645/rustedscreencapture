@@ -169,7 +169,7 @@ impl VideoEncoder {
         }
     }
     
-    unsafe fn create_video_settings(width: u32, height: u32, fps: u32) -> *mut NSDictionary<NSString, AnyObject> {
+    unsafe fn create_video_settings(width: u32, height: u32, _fps: u32) -> *mut NSDictionary<NSString, AnyObject> {
         // Create video settings dictionary
         let codec_key = NSString::from_str("AVVideoCodecKey");
         let codec_value = NSString::from_str(AVVideoCodecTypeH264);

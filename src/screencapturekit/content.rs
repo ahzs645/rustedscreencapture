@@ -6,8 +6,7 @@ use objc2::{msg_send, class};
 use objc2_foundation::{NSArray, NSString, NSDictionary, NSNumber};
 use std::ptr;
 use std::sync::{Arc, Mutex};
-use std::time::{Duration, Instant};
-use std::thread;
+
 use serde_json;
 use objc2::runtime::AnyObject;
 
@@ -543,13 +542,13 @@ impl ShareableContent {
     // These caused segfaults and are replaced with the safer content filter creation methods above
     
     /// Safe fallback - returns null to indicate object extraction is not supported
-    pub unsafe fn get_sc_display_by_id(&self, display_id: u32) -> Option<*mut SCDisplay> {
+    pub unsafe fn get_sc_display_by_id(&self, _display_id: u32) -> Option<*mut SCDisplay> {
         println!("🚫 SCDisplay object extraction disabled to prevent segfaults");
         println!("💡 Use create_display_content_filter() instead");
         None
     }
     
-    pub unsafe fn get_sc_window_by_id(&self, window_id: u32) -> Option<*mut SCWindow> {
+    pub unsafe fn get_sc_window_by_id(&self, _window_id: u32) -> Option<*mut SCWindow> {
         println!("🚫 SCWindow object extraction disabled to prevent segfaults");
         println!("💡 Use create_window_content_filter() instead");
         None
@@ -644,7 +643,7 @@ impl RealStreamManager {
             println!("✅ Created stream configuration");
             
             // Create stream delegate with recording state
-            let is_recording_flag = Arc::new(Mutex::new(true));
+            let _is_recording_flag = Arc::new(Mutex::new(true));
             // DISABLED: Using old encoder system that causes crashes
             // let delegate = RealStreamDelegate::new(
             //     config.output_path.clone(),

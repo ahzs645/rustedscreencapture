@@ -1,8 +1,7 @@
-use objc2::runtime::{AnyObject, Class};
-use objc2::{msg_send, sel, class, Encode, Encoding};
-use objc2_foundation::{NSArray, NSString, NSNumber, NSError, NSObject};
+use objc2::runtime::{AnyObject, AnyClass};
+use objc2::{msg_send, class};
+use objc2_foundation::{NSString, NSError};
 use objc2_core_media::{CMSampleBuffer, CMTime};
-use objc2_core_video::CVPixelBuffer;
 use std::ptr;
 
 // Add block2 support for completion handlers
@@ -52,8 +51,8 @@ pub enum SCStreamOutputType {
     Microphone = 2,
 }
 
-unsafe impl Encode for SCStreamOutputType {
-    const ENCODING: Encoding = u32::ENCODING;
+unsafe impl objc2::Encode for SCStreamOutputType {
+    const ENCODING: objc2::Encoding = u32::ENCODING;
 }
 
 // Core Graphics structures for frame handling
@@ -78,16 +77,16 @@ pub struct CGSize {
     pub height: f64,
 }
 
-unsafe impl Encode for CGRect {
-    const ENCODING: Encoding = Encoding::Struct("CGRect", &[CGPoint::ENCODING, CGSize::ENCODING]);
+unsafe impl objc2::Encode for CGRect {
+    const ENCODING: objc2::Encoding = objc2::Encoding::Struct("CGRect", &[CGPoint::ENCODING, CGSize::ENCODING]);
 }
 
-unsafe impl Encode for CGPoint {
-    const ENCODING: Encoding = Encoding::Struct("CGPoint", &[f64::ENCODING, f64::ENCODING]);
+unsafe impl objc2::Encode for CGPoint {
+    const ENCODING: objc2::Encoding = objc2::Encoding::Struct("CGPoint", &[f64::ENCODING, f64::ENCODING]);
 }
 
-unsafe impl Encode for CGSize {
-    const ENCODING: Encoding = Encoding::Struct("CGSize", &[f64::ENCODING, f64::ENCODING]);
+unsafe impl objc2::Encode for CGSize {
+    const ENCODING: objc2::Encoding = objc2::Encoding::Struct("CGSize", &[f64::ENCODING, f64::ENCODING]);
 }
 
 // Helper functions for ScreenCaptureKit API calls using AnyObject
@@ -98,7 +97,6 @@ impl ScreenCaptureKitHelpers {
     pub unsafe fn check_screen_recording_permission() -> bool {
         // Use CGPreflightScreenCaptureAccess to check screen recording permissions
         // This is the proper way to check ScreenCaptureKit permissions on macOS
-        use std::ffi::c_void;
         
         // Define the CGPreflightScreenCaptureAccess function
         extern "C" {
@@ -505,7 +503,7 @@ impl ScreenCaptureKitHelpers {
             let localized_name: *mut NSString = msg_send![display, localizedName];
             if !localized_name.is_null() {
                 // Use objc2_foundation's NSString methods instead of raw UTF8String
-                let ns_string = &*localized_name;
+                let _ns_string = &*localized_name;
                 // For now, use a simple fallback to avoid segfaults
                 format!("Display {}", display_id)
             } else {

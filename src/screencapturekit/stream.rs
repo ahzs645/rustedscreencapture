@@ -472,7 +472,7 @@ impl ShareableContent {
                 
                 // Create filter for main display (index 0) or specific display
                 // Use display index instead of extracted objects
-                let display_index = if display_id > 0 && (display_id as usize) <= self.displays.len() {
+                let _display_index = if display_id > 0 && (display_id as usize) <= self.displays.len() {
                     (display_id - 1) as usize
                 } else {
                     0
@@ -536,13 +536,13 @@ impl ShareableContent {
     // These caused segfaults and are replaced with the safer content filter creation methods above
     
     /// Safe fallback - returns null to indicate object extraction is not supported
-    pub unsafe fn get_sc_display_by_id(&self, display_id: u32) -> Option<*mut SCDisplay> {
+    pub unsafe fn get_sc_display_by_id(&self, _display_id: u32) -> Option<*mut SCDisplay> {
         println!("🚫 SCDisplay object extraction disabled to prevent segfaults");
         println!("💡 Use create_display_content_filter() instead");
         None
     }
     
-    pub unsafe fn get_sc_window_by_id(&self, window_id: u32) -> Option<*mut SCWindow> {
+    pub unsafe fn get_sc_window_by_id(&self, _window_id: u32) -> Option<*mut SCWindow> {
         println!("🚫 SCWindow object extraction disabled to prevent segfaults");
         println!("💡 Use create_window_content_filter() instead");
         None

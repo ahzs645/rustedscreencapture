@@ -1,10 +1,10 @@
 use std::sync::{Arc, Mutex};
 use std::path::Path;
 use objc2::runtime::AnyObject;
-use objc2::{msg_send, class, sel};
+use objc2::{msg_send, class};
 use objc2_foundation::{NSError, NSString, NSURL};
-use objc2_core_media::{CMSampleBuffer, CMTime, CMFormatDescription};
-use objc2_core_video::{CVImageBuffer, CVPixelBuffer};
+use objc2_core_media::{CMSampleBuffer, CMTime};
+use objc2_core_video::{CVPixelBuffer};
 use objc2_av_foundation::{AVAssetWriter, AVAssetWriterInput, AVAssetWriterInputPixelBufferAdaptor};
 use napi::{Result, Status, Error};
 
@@ -27,12 +27,10 @@ pub struct StreamOutput {
     // Recording state
     output_path: String,
     is_recording: Arc<Mutex<bool>>,
-    recording_started: Arc<Mutex<bool>>,
     
     // Statistics
     video_frame_count: Arc<Mutex<u64>>,
     audio_sample_count: Arc<Mutex<u64>>,
-    start_time: Arc<Mutex<Option<CMTime>>>,
     
     // Configuration
     width: u32,
@@ -52,10 +50,8 @@ impl StreamOutput {
             pixel_buffer_adaptor: None,
             output_path,
             is_recording: Arc::new(Mutex::new(false)),
-            recording_started: Arc::new(Mutex::new(false)),
             video_frame_count: Arc::new(Mutex::new(0)),
             audio_sample_count: Arc::new(Mutex::new(0)),
-            start_time: Arc::new(Mutex::new(None)),
             width,
             height,
             fps,
@@ -263,8 +259,8 @@ impl StreamOutput {
     
     /// Ensure recording session is started with proper timing
     fn ensure_recording_started(&mut self, sample_buffer: &CMSampleBuffer) -> Result<()> {
-        if let Ok(mut recording_started) = self.recording_started.lock() {
-            if !*recording_started {
+        if let Ok(mut is_recording) = self.is_recording.lock() {
+            if !*is_recording {
                 if let Some(asset_writer) = self.asset_writer {
                     unsafe {
                         // Start the writing session
@@ -279,12 +275,6 @@ impl StreamOutput {
                         // Start session at source time
                         let _: () = msg_send![asset_writer, startSessionAtSourceTime: start_time];
                         
-                        // Store the start time
-                        if let Ok(mut stored_start_time) = self.start_time.lock() {
-                            *stored_start_time = Some(start_time);
-                        }
-                        
-                        *recording_started = true;
                         println!("✅ Recording session started successfully");
                     }
                 }
@@ -448,7 +438,7 @@ impl StreamOutput {
 }
 
 /// Create an Objective-C delegate object that bridges to our Rust StreamOutput
-pub unsafe fn create_stream_delegate(stream_output: Arc<Mutex<StreamOutput>>) -> *mut AnyObject {
+pub unsafe fn create_stream_delegate(_stream_output: Arc<Mutex<StreamOutput>>) -> *mut AnyObject {
     // For now, create a simple NSObject delegate
     // In a full implementation, this would be a proper Objective-C class that implements SCStreamDelegate
     let delegate_class = class!(NSObject);

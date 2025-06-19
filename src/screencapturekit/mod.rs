@@ -14,6 +14,8 @@ pub mod recording_manager;
 // Re-export key types for easier access
 pub use content::ShareableContent;
 pub use audio::AudioManager;
+// Note: These exports are available but may show as unused in some contexts
+// They are used by the main lib.rs and external consumers
 pub use stream_output::StreamOutput;
 pub use permission_manager::PermissionManager;
 pub use transcription::{TranscriptionManager, TranscriptionConfig, TranscriptionResult};

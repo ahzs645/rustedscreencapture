@@ -1,7 +1,7 @@
 use std::sync::{Arc, Mutex};
 use objc2::runtime::AnyObject;
 use objc2::{msg_send, class};
-use objc2_foundation::{NSError, NSString};
+use objc2_foundation::NSError;
 use objc2_core_media::{CMSampleBuffer, CMTime};
 use objc2_core_video::{CVImageBuffer, CVPixelBuffer};
 use napi::{Result, Status, Error};
@@ -22,7 +22,7 @@ pub struct RealStreamDelegate {
 }
 
 impl RealStreamDelegate {
-    pub fn new(output_path: String, is_recording: Arc<Mutex<bool>>, width: u32, height: u32, fps: u32) -> Self {
+    pub fn new(output_path: String, is_recording: Arc<Mutex<bool>>, _width: u32, _height: u32, _fps: u32) -> Self {
         println!("🎬 Creating RealStreamDelegate for recording: {}", output_path);
         
         // Create video encoder
@@ -161,8 +161,8 @@ impl RealStreamDelegate {
                 return;
             }
             
-            let pixel_buffer = image_buffer as *mut CVPixelBuffer;
-            let presentation_time: CMTime = msg_send![sample_buffer, presentationTimeStamp];
+            let _pixel_buffer = image_buffer as *mut CVPixelBuffer;
+            let _presentation_time: CMTime = msg_send![sample_buffer, presentationTimeStamp];
             
             // Update frame count
             if let Ok(mut count) = self.frame_count.lock() {
@@ -175,7 +175,7 @@ impl RealStreamDelegate {
         }
     }
     
-    fn process_audio_sample_buffer(&self, sample_buffer: &CMSampleBuffer, _encoder: &str) {
+    fn process_audio_sample_buffer(&self, _sample_buffer: &CMSampleBuffer, _encoder: &str) {
         // DISABLED: Encoder functionality removed
         println!("🔊 Audio sample received (encoding disabled)");
     }

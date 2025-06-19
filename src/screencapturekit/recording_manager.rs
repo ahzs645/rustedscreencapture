@@ -1,9 +1,8 @@
 use std::sync::{Arc, Mutex};
 use std::path::Path;
 use napi::{Result, Status, Error};
-use objc2::{msg_send, class};
-use objc2_foundation::{NSError, NSString};
-use objc2_core_media::{CMSampleBuffer, CMTime};
+
+use objc2_core_media::CMSampleBuffer;
 
 use super::{
     content::{ShareableContent, RealContentFilter, DisplayInfo, WindowInfo},
@@ -102,7 +101,7 @@ impl RecordingManager {
             config.capture_audio.unwrap_or(false),
         )?;
         
-        let mut stream_output_arc = Arc::new(Mutex::new(stream_output));
+        let stream_output_arc = Arc::new(Mutex::new(stream_output));
         
         // Initialize the asset writer
         if let Ok(mut output) = stream_output_arc.lock() {
@@ -305,7 +304,7 @@ impl RecordingManager {
     }
     
     /// Create content filter based on configuration
-    fn create_content_filter(&self, config: &RecordingConfiguration) -> Result<RealContentFilter> {
+    fn create_content_filter(&self, _config: &RecordingConfiguration) -> Result<RealContentFilter> {
         if let Some(ref content) = self.shareable_content {
             // For now, create a filter for the first display
             // In a real implementation, this would parse the screen_id from the config

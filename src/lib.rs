@@ -94,6 +94,7 @@ impl RealContentFilter {
 
 // Export RealStreamManager as NAPI class
 #[napi]
+#[allow(dead_code)]
 pub struct RealStreamManager {
     inner: screencapturekit::content::RealStreamManager,
 }
