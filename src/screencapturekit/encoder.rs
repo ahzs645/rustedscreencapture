@@ -180,33 +180,16 @@ impl VideoEncoder {
         let height_key = NSString::from_str("AVVideoHeightKey");
         let height_value: *mut NSNumber = msg_send![class!(NSNumber), numberWithUnsignedInt: height];
         
-        // Create compression properties
-        let compression_key = NSString::from_str("AVVideoCompressionPropertiesKey");
-        let avg_bitrate_key = NSString::from_str("AVVideoAverageBitRateKey");
-        let avg_bitrate_value: *mut NSNumber = msg_send![class!(NSNumber), numberWithUnsignedInt: width * height * 8]; // 8 bits per pixel
-        
-        let max_keyframe_key = NSString::from_str("AVVideoMaxKeyFrameIntervalKey");
-        let max_keyframe_value: *mut NSNumber = msg_send![class!(NSNumber), numberWithUnsignedInt: fps * 2]; // Keyframe every 2 seconds
-        
-        // Create compression properties dictionary
-        let compression_props: *mut NSDictionary<NSString, AnyObject> = msg_send![
-            class!(NSDictionary),
-            dictionaryWithObjects: &[avg_bitrate_value as *mut AnyObject, max_keyframe_value as *mut AnyObject],
-            forKeys: &[&*avg_bitrate_key, &*max_keyframe_key],
-            count: 2
-        ];
-        
-        // Create main video settings dictionary
+        // Create main video settings dictionary (no compression properties for avc1 compatibility)
         let settings: *mut NSDictionary<NSString, AnyObject> = msg_send![
             class!(NSDictionary),
             dictionaryWithObjects: &[
                 &*codec_value as *const NSString as *mut AnyObject,
                 width_value as *mut AnyObject,
-                height_value as *mut AnyObject,
-                compression_props as *mut AnyObject
+                height_value as *mut AnyObject
             ],
-            forKeys: &[&*codec_key, &*width_key, &*height_key, &*compression_key],
-            count: 4
+            forKeys: &[&*codec_key, &*width_key, &*height_key],
+            count: 3
         ];
         
         settings

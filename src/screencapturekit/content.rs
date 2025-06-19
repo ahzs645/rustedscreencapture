@@ -9,6 +9,7 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use std::thread;
 use serde_json;
+use objc2::runtime::AnyObject;
 
 use super::bindings::{SCShareableContent, SCDisplay, SCWindow, SCContentFilter, SCStream, SCStreamConfiguration, ScreenCaptureKitHelpers, kCVPixelFormatType_32BGRA};
 
@@ -644,19 +645,25 @@ impl RealStreamManager {
             
             // Create stream delegate with recording state
             let is_recording_flag = Arc::new(Mutex::new(true));
-            let delegate = RealStreamDelegate::new(
-                config.output_path.clone(),
-                is_recording_flag.clone(),
-                config.width.unwrap_or(1920),
-                config.height.unwrap_or(1080),
-                config.fps.unwrap_or(30)
-            );
+            // DISABLED: Using old encoder system that causes crashes
+            // let delegate = RealStreamDelegate::new(
+            //     config.output_path.clone(),
+            //     is_recording_flag.clone(),
+            //     config.width.unwrap_or(1920),
+            //     config.height.unwrap_or(1080),
+            //     config.fps.unwrap_or(30)
+            // );
             
-            let delegate_ptr = delegate.create_objc_delegate();
-            if delegate_ptr.is_null() {
-                return Err(Error::new(Status::GenericFailure, "Failed to create stream delegate"));
-            }
-            println!("✅ Created stream delegate");
+            // let delegate_ptr = delegate.create_objc_delegate();
+            // if delegate_ptr.is_null() {
+            //     return Err(Error::new(Status::GenericFailure, "Failed to create stream delegate"));
+            // }
+            
+            // Use a simple NSObject delegate instead
+            let delegate_class = class!(NSObject);
+            let delegate_ptr: *mut AnyObject = msg_send![delegate_class, new];
+            
+            println!("✅ Created simple delegate (encoder disabled)");
             
             // Create SCStream with real content filter
             let stream = self.create_sc_stream(content_filter.get_filter_ptr(), stream_config, delegate_ptr)?;
@@ -682,7 +689,7 @@ impl RealStreamManager {
             
             // Store the stream and delegate
             self.stream = Some(stream);
-            self.delegate = Some(Box::new(delegate));
+            // self.delegate = Some(Box::new(delegate));  // DISABLED: delegate disabled
             self.is_recording = true;
             self.output_path = Some(config.output_path.clone());
             
@@ -698,13 +705,14 @@ impl RealStreamManager {
                 println!("🛑 Stopping REAL ScreenCaptureKit recording");
                 
                 // Get final stats before stopping
-                if let Some(delegate) = &self.delegate {
-                    let frame_count = delegate.get_frame_count();
-                    let audio_count = delegate.get_audio_frame_count();
-                    let fps = delegate.get_current_fps();
-                    println!("📊 Final capture stats: {} video frames, {} audio samples, {:.1} FPS", 
-                        frame_count, audio_count, fps);
-                }
+                // DISABLED: delegate disabled
+                // if let Some(delegate) = &self.delegate {
+                //     let frame_count = delegate.get_frame_count();
+                //     let audio_count = delegate.get_audio_frame_count();
+                //     let fps = delegate.get_current_fps();
+                //     println!("📊 Final capture stats: {} video frames, {} audio samples, {:.1} FPS", 
+                //         frame_count, audio_count, fps);
+                // }
                 
                 // Stop the stream with completion handler
                 let stop_result = std::sync::Arc::new(std::sync::Mutex::new(None));
@@ -728,17 +736,18 @@ impl RealStreamManager {
                 self.stream = None;
                 
                 // Finalize encoding through delegate
-                if let Some(delegate) = &mut self.delegate {
-                    delegate.handle_stream_stopped(None);
-                    
-                    // Wait a bit more for encoding finalization
-                    std::thread::sleep(std::time::Duration::from_millis(500));
-                }
+                // DISABLED: delegate disabled
+                // if let Some(delegate) = &mut self.delegate {
+                //     delegate.handle_stream_stopped(None);
+                //     
+                //     // Wait a bit more for encoding finalization
+                //     std::thread::sleep(std::time::Duration::from_millis(500));
+                // }
                 
                 let output_path = self.output_path.clone().unwrap_or_else(|| "/tmp/recording.mp4".to_string());
                 
                 // Clean up delegate
-                self.delegate = None;
+                // self.delegate = None;  // DISABLED: delegate disabled
                 
                 println!("✅ Real ScreenCaptureKit recording session completed");
                 println!("📁 Output file: {}", output_path);
@@ -790,35 +799,38 @@ impl RealStreamManager {
     }
     
     pub fn get_stats(&self) -> String {
-        if let Some(delegate) = &self.delegate {
-            let video_frames = delegate.get_frame_count();
-            let audio_frames = delegate.get_audio_frame_count();
-            let current_fps = delegate.get_current_fps();
-            let estimated_duration = if current_fps > 0.0 {
-                video_frames as f64 / current_fps
-            } else {
-                video_frames as f64 / 30.0 // Fallback to 30fps estimate
-            };
-            
-            serde_json::json!({
-                "isRecording": self.is_recording,
-                "outputPath": self.output_path,
-                "videoFrames": video_frames,
-                "audioFrames": audio_frames,
-                "currentFPS": current_fps,
-                "estimatedDuration": estimated_duration,
-                "method": "real-screencapturekit-stream",
-                "streamActive": !self.stream.is_none(),
-                "delegateActive": delegate.is_recording(),
-                "implementation": "Phase2-RealSCStream"
-            }).to_string()
-        } else {
-            serde_json::json!({
-                "isRecording": self.is_recording,
-                "streamActive": !self.stream.is_none(),
-                "error": "No active delegate",
-                "method": "real-screencapturekit-stream"
-            }).to_string()
-        }
+        // DISABLED: delegate disabled
+        // if let Some(delegate) = &self.delegate {
+        //     let video_frames = delegate.get_frame_count();
+        //     let audio_frames = delegate.get_audio_frame_count();
+        //     let current_fps = delegate.get_current_fps();
+        //     let estimated_duration = if current_fps > 0.0 {
+        //         video_frames as f64 / current_fps
+        //     } else {
+        //         video_frames as f64 / 30.0 // Fallback to 30fps estimate
+        //     };
+        //     
+        //     serde_json::json!({
+        //         "isRecording": self.is_recording,
+        //         "outputPath": self.output_path,
+        //         "videoFrames": video_frames,
+        //         "audioFrames": audio_frames,
+        //         "currentFPS": current_fps,
+        //         "estimatedDuration": estimated_duration,
+        //         "method": "real-screencapturekit-stream",
+        //         "streamActive": !self.stream.is_none(),
+        //         "delegateActive": delegate.is_recording(),
+        //         "implementation": "Phase2-RealSCStream"
+        //     }).to_string()
+        // } else {
+        
+        serde_json::json!({
+            "isRecording": self.is_recording,
+            "streamActive": !self.stream.is_none(),
+            "info": "Delegate disabled to avoid encoder crashes",
+            "method": "real-screencapturekit-stream"
+        }).to_string()
+        
+        // }
     }
 }

@@ -96,3 +96,14 @@ export declare class AudioManager {
   getAvailableAudioDevices(): Array<AudioDevice>
   configureAudioSession(): void
 }
+export declare class IntegratedRecordingManager {
+  constructor()
+  initialize(): void
+  startRecording(config: RecordingConfiguration): void
+  stopRecording(): string
+  isRecording(): boolean
+  getRecordingStats(): string
+  getPermissionStatus(): string
+  getAvailableScreens(): Array<ScreenSource>
+  getAvailableWindows(): Array<ScreenSource>
+}

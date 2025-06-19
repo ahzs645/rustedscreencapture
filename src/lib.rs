@@ -25,6 +25,7 @@ pub struct AudioDevice {
     pub device_type: String,
 }
 
+#[derive(Clone)]
 #[napi(object)]
 pub struct RecordingConfiguration {
     pub width: Option<u32>,
@@ -745,5 +746,74 @@ impl AudioManager {
     #[napi]
     pub fn configure_audio_session(&self) -> Result<()> {
         screencapturekit::AudioManager::configure_audio_session()
+    }
+}
+
+// Export the new integrated RecordingManager that saves working audio/video files
+#[napi]
+pub struct IntegratedRecordingManager {
+    inner: screencapturekit::RecordingManager,
+}
+
+#[napi]
+impl IntegratedRecordingManager {
+    #[napi(constructor)]
+    pub fn new() -> Result<Self> {
+        let inner = screencapturekit::RecordingManager::new()?;
+        Ok(Self { inner })
+    }
+    
+    #[napi]
+    pub fn initialize(&mut self) -> Result<()> {
+        self.inner.initialize()
+    }
+    
+    #[napi]
+    pub fn start_recording(&mut self, config: RecordingConfiguration) -> Result<()> {
+        self.inner.start_recording(config)
+    }
+    
+    #[napi]
+    pub fn stop_recording(&mut self) -> Result<String> {
+        self.inner.stop_recording()
+    }
+    
+    #[napi]
+    pub fn is_recording(&self) -> bool {
+        self.inner.is_recording()
+    }
+    
+    #[napi]
+    pub fn get_recording_stats(&self) -> Result<String> {
+        self.inner.get_recording_stats()
+    }
+    
+    #[napi]
+    pub fn get_permission_status(&self) -> String {
+        self.inner.get_permission_status()
+    }
+    
+    #[napi]
+    pub fn get_available_screens(&self) -> Result<Vec<ScreenSource>> {
+        let displays = self.inner.get_available_screens()?;
+        Ok(displays.into_iter().map(|d| ScreenSource {
+            id: format!("display:{}", d.id),
+            name: d.name,
+            width: d.width,
+            height: d.height,
+            is_display: true,
+        }).collect())
+    }
+    
+    #[napi]
+    pub fn get_available_windows(&self) -> Result<Vec<ScreenSource>> {
+        let windows = self.inner.get_available_windows()?;
+        Ok(windows.into_iter().map(|w| ScreenSource {
+            id: format!("window:{}", w.id),
+            name: w.title,
+            width: w.width,
+            height: w.height,
+            is_display: false,
+        }).collect())
     }
 }

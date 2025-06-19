@@ -310,7 +310,7 @@ if (!nativeBinding) {
   throw new Error(`Failed to load native binding`)
 }
 
-const { ContentManager, RealContentFilter, RealStreamManager, K_CV_PIXEL_FORMAT_TYPE_32_BGRA, K_CG_COLOR_SPACE_SRGB, K_CG_COLOR_SPACE_DISPLAY_P3, kCVPixelFormatType_32BGRA, kCGColorSpaceSRGB, ShareableContent, ScreenCaptureKitRecorder, initScreencapturekit, getVersion, checkScreenRecordingPermission, requestScreenRecordingPermission, checkMacosVersion, testPermissionsAndApi, testScreencapturekitWithTimeout, testPhase2Implementation, AudioManager } = nativeBinding
+const { ContentManager, RealContentFilter, RealStreamManager, K_CV_PIXEL_FORMAT_TYPE_32_BGRA, K_CG_COLOR_SPACE_SRGB, K_CG_COLOR_SPACE_DISPLAY_P3, kCVPixelFormatType_32BGRA, kCGColorSpaceSRGB, ShareableContent, ScreenCaptureKitRecorder, initScreencapturekit, getVersion, checkScreenRecordingPermission, requestScreenRecordingPermission, checkMacosVersion, testPermissionsAndApi, testScreencapturekitWithTimeout, testPhase2Implementation, AudioManager, IntegratedRecordingManager } = nativeBinding
 
 module.exports.ContentManager = ContentManager
 module.exports.RealContentFilter = RealContentFilter
@@ -331,3 +331,4 @@ module.exports.testPermissionsAndApi = testPermissionsAndApi
 module.exports.testScreencapturekitWithTimeout = testScreencapturekitWithTimeout
 module.exports.testPhase2Implementation = testPhase2Implementation
 module.exports.AudioManager = AudioManager
+module.exports.IntegratedRecordingManager = IntegratedRecordingManager
