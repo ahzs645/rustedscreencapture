@@ -1,23 +1,36 @@
 // ScreenCaptureKit implementation with objc2 bindings
+// Reorganized for better maintainability and separation of concerns
 
+// Core Foundation Layer
+pub mod foundation;      // Core Graphics, system APIs, basic types
+pub mod bindings;        // Raw ScreenCaptureKit bindings only
+pub mod types;          // Shared types and constants
+
+// Content Discovery Layer  
+pub mod content;        // Content enumeration and management
+pub mod filters;        // Content filter creation and management
+
+// Recording Layer
+pub mod recording;      // High-level recording management
+pub mod permissions;    // Permission management
+
+// Legacy modules (to be refactored)
 pub mod audio;
-pub mod bindings;
-pub mod content;
 pub mod delegate;
-pub mod encoder;  // RE-ENABLED: Fixed AVVideoAverageBitRateKey issue
+pub mod encoder;
+pub mod permission_manager;
+pub mod recording_manager;
 pub mod stream;
 pub mod stream_output;
-pub mod permission_manager;
 pub mod transcription;
-pub mod recording_manager;
 
-// Re-export key types for easier access
-pub use content::ShareableContent;
-pub use audio::AudioManager;
-// Note: These exports are available but may show as unused in some contexts
-// They are used by the main lib.rs and external consumers
+// Re-export main types and functions for easy access
+pub use content::{ContentManager, ShareableContent};
+pub use recording::RecordingManager;
+pub use permissions::PermissionManager;
+pub use filters::{ContentFilter, ContentFilterFactory};
+
+// Legacy compatibility exports (can be removed later)
+pub use recording_manager::RealStreamManager;
 pub use stream_output::StreamOutput;
-pub use permission_manager::PermissionManager;
-pub use transcription::{TranscriptionManager, TranscriptionConfig, TranscriptionResult};
-pub use recording_manager::RecordingManager;
  
