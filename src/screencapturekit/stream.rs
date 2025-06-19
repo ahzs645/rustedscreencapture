@@ -375,7 +375,7 @@ impl ShareableContent {
             let mut content = Self::new();
             
             // Use simpler approach without thread safety issues
-            match ScreenCaptureKitHelpers::get_shareable_content_sync() {
+            match ScreenCaptureKitAPI::get_shareable_content_sync() {
                 Ok(sc_content) => {
                     println!("✅ Got ScreenCaptureKit content synchronously within timeout");
                     content.sc_content_ptr = Some(sc_content);
@@ -394,7 +394,7 @@ impl ShareableContent {
                     println!("⚠️ ScreenCaptureKit sync failed, using safe content only");
                     
                     // Start async call for future use but don't wait
-                    ScreenCaptureKitHelpers::get_shareable_content_async(|_content, _error| {
+                    ScreenCaptureKitAPI::get_shareable_content_async(|_content, _error| {
                         println!("🔄 Background ScreenCaptureKit call completed");
                     });
                     
@@ -412,7 +412,7 @@ impl ShareableContent {
         println!("🔍 Fetching real shareable content using ScreenCaptureKit API");
         
         // Use simpler approach without thread safety issues
-        match ScreenCaptureKitHelpers::get_shareable_content_sync() {
+        match ScreenCaptureKitAPI::get_shareable_content_sync() {
             Ok(content) => {
                 println!("✅ Got ScreenCaptureKit content synchronously");
                 Ok(content)
@@ -422,7 +422,7 @@ impl ShareableContent {
                 println!("💡 Using async approach without waiting (safer)");
                 
                 // Start the async call but don't wait for it to avoid thread safety issues
-                ScreenCaptureKitHelpers::get_shareable_content_async(|_content, _error| {
+                ScreenCaptureKitAPI::get_shareable_content_async(|_content, _error| {
                     println!("🔄 Async ScreenCaptureKit call completed");
                 });
                 

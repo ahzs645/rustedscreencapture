@@ -54,13 +54,13 @@ impl RecordingManager {
         let content_filter = self.create_content_filter(&config)?;
         
         // Create stream configuration
-        let stream_config = self.create_stream_configuration(&config)?;
+        let stream_config = unsafe { self.create_stream_configuration(&config)? };
         
         // Create stream with a simple delegate
-        let stream = self.create_stream(content_filter.get_filter_ptr(), stream_config)?;
+        let stream = unsafe { self.create_stream(content_filter.get_filter_ptr(), stream_config)? };
         
         // Start the stream
-        self.start_stream_capture(stream)?;
+        unsafe { self.start_stream_capture(stream)? };
         
         // Store state
         self.stream = Some(stream);
@@ -103,7 +103,7 @@ impl RecordingManager {
 
     /// Check if currently recording
     pub fn is_recording(&self) -> bool {
-        self.is_recording.lock().unwrap_or_else(|_| false.into()).clone()
+        self.is_recording.lock().map(|r| *r).unwrap_or(false)
     }
 
     /// Get recording statistics
@@ -116,6 +116,43 @@ impl RecordingManager {
             "method": "screencapturekit-rust-modular",
             "implementation": "Clean modular architecture"
         }).to_string()
+    }
+    
+    /// Initialize the recording manager
+    pub fn initialize(&mut self) -> Result<()> {
+        // Get shareable content if not already available
+        if self.shareable_content.is_none() {
+            self.shareable_content = Some(ShareableContent::new_with_screencapturekit()?);
+        }
+        Ok(())
+    }
+    
+    /// Get recording statistics (alias for get_stats)
+    pub fn get_recording_stats(&self) -> Result<String> {
+        Ok(self.get_stats())
+    }
+    
+    /// Get permission status
+    pub fn get_permission_status(&self) -> String {
+        PermissionManager::get_permission_status_report()
+    }
+    
+    /// Get available screens
+    pub fn get_available_screens(&self) -> Result<Vec<DisplayInfo>> {
+        if let Some(ref content) = self.shareable_content {
+            content.get_displays()
+        } else {
+            Err(Error::new(Status::GenericFailure, "Not initialized"))
+        }
+    }
+    
+    /// Get available windows
+    pub fn get_available_windows(&self) -> Result<Vec<WindowInfo>> {
+        if let Some(ref content) = self.shareable_content {
+            content.get_windows()
+        } else {
+            Err(Error::new(Status::GenericFailure, "Not initialized"))
+        }
     }
 
     /// Validate recording configuration

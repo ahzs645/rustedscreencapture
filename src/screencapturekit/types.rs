@@ -168,6 +168,20 @@ impl std::fmt::Display for SCError {
 
 impl std::error::Error for SCError {}
 
+impl From<SCError> for napi::Error {
+    fn from(err: SCError) -> Self {
+        match err {
+            SCError::PermissionDenied => napi::Error::new(napi::Status::GenericFailure, "Screen recording permission denied"),
+            SCError::ContentNotFound => napi::Error::new(napi::Status::GenericFailure, "Screen content not found"),
+            SCError::StreamCreationFailed => napi::Error::new(napi::Status::GenericFailure, "Failed to create stream"),
+            SCError::FilterCreationFailed => napi::Error::new(napi::Status::GenericFailure, "Failed to create content filter"),
+            SCError::RecordingFailed => napi::Error::new(napi::Status::GenericFailure, "Recording failed"),
+            SCError::InvalidConfiguration => napi::Error::new(napi::Status::InvalidArg, "Invalid configuration"),
+            SCError::SystemError(msg) => napi::Error::new(napi::Status::GenericFailure, msg),
+        }
+    }
+}
+
 // Utility functions for type conversions
 pub fn create_cmtime_from_fps(fps: u32) -> CMTime {
     CMTime {

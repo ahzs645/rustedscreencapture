@@ -34,6 +34,13 @@ impl ScreenCaptureKitAPI {
             getShareableContentWithCompletionHandler: &*block
         ];
     }
+    
+    /// Get shareable content synchronously (placeholder - not available in real ScreenCaptureKit)
+    pub unsafe fn get_shareable_content_sync() -> Result<*mut SCShareableContent, String> {
+        // This is a placeholder - real ScreenCaptureKit only has async methods
+        // Return an error to indicate this isn't supported
+        Err("Synchronous content retrieval not supported by ScreenCaptureKit".to_string())
+    }
 
     /// Create a content filter with display
     pub unsafe fn create_content_filter_with_display(display: *mut SCDisplay) -> *mut SCContentFilter {

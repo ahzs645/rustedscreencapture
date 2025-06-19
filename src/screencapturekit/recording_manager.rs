@@ -24,7 +24,7 @@ pub struct RecordingManager {
     
     // ScreenCaptureKit objects
     stream: Option<*mut SCStream>,
-    content_filter: Option<RealContentFilter>,
+    content_filter: Option<ContentFilter>,
     
     // State management
     is_recording: Arc<Mutex<bool>>,
@@ -61,7 +61,7 @@ impl RecordingManager {
         println!("🔧 Initializing RecordingManager");
         
         // Get shareable content
-        self.shareable_content = Some(ShareableContent::new_with_real_data()?);
+        self.shareable_content = Some(ShareableContent::new_with_screencapturekit()?);
         
         println!("✅ RecordingManager initialized successfully");
         Ok(())
@@ -195,39 +195,6 @@ impl RecordingManager {
         self.is_recording.lock().map(|r| *r).unwrap_or(false)
     }
     
-    /// Get current recording statistics
-    pub fn get_recording_stats(&self) -> Result<String> {
-        if let Some(ref stream_output) = self.stream_output {
-            if let Ok(output) = stream_output.lock() {
-                let (video_frames, audio_samples, is_recording) = output.get_stats();
-                
-                let stats = serde_json::json!({
-                    "isRecording": is_recording,
-                    "videoFrames": video_frames,
-                    "audioSamples": audio_samples,
-                    "outputPath": self.output_path,
-                    "estimatedDuration": if let Some(ref config) = self.recording_config {
-                        video_frames as f64 / config.fps.unwrap_or(30) as f64
-                    } else {
-                        0.0
-                    }
-                });
-                
-                Ok(stats.to_string())
-            } else {
-                Err(Error::new(Status::GenericFailure, "Failed to access recording stats"))
-            }
-        } else {
-            Ok(serde_json::json!({
-                "isRecording": false,
-                "videoFrames": 0,
-                "audioSamples": 0,
-                "outputPath": null,
-                "estimatedDuration": 0.0
-            }).to_string())
-        }
-    }
-    
     /// Configure transcription settings
     pub fn configure_transcription(&mut self, config: TranscriptionConfig) -> Result<()> {
         println!("🎤 Configuring transcription with service: {:?}", config.service);
@@ -307,15 +274,21 @@ impl RecordingManager {
     }
     
     /// Create content filter based on configuration
-    fn create_content_filter(&self, _config: &RecordingConfiguration) -> Result<RealContentFilter> {
+    fn create_content_filter(&self, _config: &RecordingConfiguration) -> Result<ContentFilter> {
         if let Some(ref content) = self.shareable_content {
             // For now, create a filter for the first display
             // In a real implementation, this would parse the screen_id from the config
             let displays = content.get_displays()?;
             if let Some(display) = displays.first() {
-                let filter = RealContentFilter::new_with_display(content, display.id)?;
-                println!("🎯 Created content filter for display: {}", display.name);
-                Ok(filter)
+                if let Some(sc_content) = content.get_sc_content_ptr() {
+                    unsafe {
+                        let filter = ContentFilter::new_for_display(sc_content, display.id)?;
+                        println!("🎯 Created content filter for display: {}", display.name);
+                        Ok(filter)
+                    }
+                } else {
+                    Err(Error::new(Status::GenericFailure, "ScreenCaptureKit content not available"))
+                }
             } else {
                 Err(Error::new(Status::GenericFailure, "No displays available for recording"))
             }
@@ -327,9 +300,9 @@ impl RecordingManager {
     /// Create stream configuration
     fn create_stream_configuration(&self, config: &RecordingConfiguration) -> Result<*mut SCStreamConfiguration> {
         unsafe {
-            let stream_config = ScreenCaptureKitHelpers::create_stream_configuration();
+            let stream_config = ScreenCaptureKitAPI::create_stream_configuration();
             
-            ScreenCaptureKitHelpers::configure_stream_configuration(
+            ScreenCaptureKitAPI::configure_stream_configuration(
                 stream_config,
                 config.width.unwrap_or(1920),
                 config.height.unwrap_or(1080),
@@ -337,7 +310,6 @@ impl RecordingManager {
                 config.show_cursor.unwrap_or(true),
                 config.capture_audio.unwrap_or(false),
                 0x42475241, // 'BGRA' pixel format
-                1, // sRGB color space
             );
             
             println!("⚙️ Created stream configuration");
@@ -348,7 +320,7 @@ impl RecordingManager {
     /// Create ScreenCaptureKit stream with proper delegate
     fn create_screencapturekit_stream(
         &self,
-        content_filter: RealContentFilter,
+        content_filter: ContentFilter,
         stream_config: *mut SCStreamConfiguration,
         stream_output: Arc<Mutex<StreamOutput>>,
     ) -> Result<*mut SCStream> {
@@ -357,7 +329,7 @@ impl RecordingManager {
             let delegate = super::stream_output::create_stream_delegate(stream_output);
             
             // Create the SCStream
-            let stream = ScreenCaptureKitHelpers::create_stream(
+            let stream = ScreenCaptureKitAPI::create_stream(
                 content_filter.get_filter_ptr(),
                 stream_config,
                 delegate,
@@ -378,7 +350,7 @@ impl RecordingManager {
             println!("🚀 Starting ScreenCaptureKit capture");
             
             // Use the async start method with a completion handler
-            ScreenCaptureKitHelpers::start_stream_capture_async(stream, |error| {
+            ScreenCaptureKitAPI::start_stream_capture_async(stream, |error| {
                 if let Some(error) = error {
                     println!("❌ Failed to start capture: {:?}", error);
                 } else {
@@ -395,7 +367,7 @@ impl RecordingManager {
         unsafe {
             println!("⏹️ Stopping ScreenCaptureKit capture");
             
-            ScreenCaptureKitHelpers::stop_stream_capture_async(stream, |error| {
+            ScreenCaptureKitAPI::stop_stream_capture_async(stream, |error| {
                 if let Some(error) = error {
                     println!("⚠️ Warning during capture stop: {:?}", error);
                 } else {

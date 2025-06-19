@@ -75,9 +75,11 @@ impl RealContentFilter {
     pub fn new() -> Result<Self> {
         // Create a default filter - this would need proper initialization in real usage
         let content = screencapturekit::content::ShareableContent::new_with_screencapturekit()?;
-        let inner = screencapturekit::filters::ContentFilterFactory::create_display_filter(
-            content.get_sc_content_ptr(), 1
-        )?;
+        let inner = unsafe {
+            screencapturekit::filters::ContentFilterFactory::create_display_filter(
+                content.get_sc_content_ptr(), 1
+            )?
+        };
         Ok(Self { inner })
     }
     
@@ -336,7 +338,7 @@ impl ScreenCaptureKitRecorder {
         }
         
         // Option 2: Try the improved content retrieval with timeout
-        match screencapturekit::content::ShareableContent::new_with_timeout(timeout) {
+        match screencapturekit::content::ShareableContent::new_with_timeout(timeout as u64) {
             Ok(content) => {
                 let sources = screencapturekit::content::ContentManager::extract_screen_sources(&content)?;
                 self.current_content = Some(content);
@@ -382,7 +384,7 @@ impl ScreenCaptureKitRecorder {
         
         // Create real stream manager and start recording
         let mut stream_manager = screencapturekit::recording::RecordingManager::new();
-        stream_manager.start_recording(content_filter, config)?;
+        stream_manager.start_recording(config)?;
         
         // Store the stream manager (in a real implementation, this would be a field)
         // For now, we'll just demonstrate the API usage
@@ -452,18 +454,22 @@ impl ScreenCaptureKitRecorder {
                 .map_err(|_| Error::new(Status::InvalidArg, "Invalid display ID"))?;
             
             println!("✅ Creating segfault-safe display content filter for ScreenCaptureKit");
-            screencapturekit::filters::ContentFilterFactory::create_display_filter(
-                content.get_sc_content_ptr(), display_id
-            )
+            unsafe {
+                screencapturekit::filters::ContentFilterFactory::create_display_filter(
+                    content.get_sc_content_ptr(), display_id
+                )
+            }
             
         } else if screen_id.starts_with("window:") {
             let window_id: u32 = screen_id[7..].parse()
                 .map_err(|_| Error::new(Status::InvalidArg, "Invalid window ID"))?;
             
             println!("✅ Creating segfault-safe window content filter for ScreenCaptureKit");
-            screencapturekit::filters::ContentFilterFactory::create_window_filter(
-                content.get_sc_content_ptr(), window_id
-            )
+            unsafe {
+                screencapturekit::filters::ContentFilterFactory::create_window_filter(
+                    content.get_sc_content_ptr(), window_id
+                )
+            }
             
         } else {
             Err(Error::new(Status::InvalidArg, "Invalid screen ID format"))
@@ -677,9 +683,11 @@ pub fn test_phase2_implementation() -> Result<String> {
     
     // Test 2: Create real content filter (segfault-safe)
     println!("🎯 Test 2: Segfault-safe content filter creation");
-    let display_filter = screencapturekit::filters::ContentFilterFactory::create_display_filter(
-        content.get_sc_content_ptr(), 1
-    )?;
+    let display_filter = unsafe {
+        screencapturekit::filters::ContentFilterFactory::create_display_filter(
+            content.get_sc_content_ptr(), 1
+        )?
+    };
     
     // Skip window filter test to avoid potential issues
     let display_valid = display_filter.is_valid();
