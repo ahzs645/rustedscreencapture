@@ -16,15 +16,22 @@ use super::foundation::CGRect;
 pub struct ScreenCaptureKitAPI;
 
 impl ScreenCaptureKitAPI {
-    /// Get shareable content asynchronously
+    /// Get shareable content asynchronously with proper error handling
     pub unsafe fn get_shareable_content_async<F>(completion: F) 
     where
-        F: Fn(Option<*mut SCShareableContent>, Option<&NSError>) + Send + Sync + Clone + 'static,
+        F: FnOnce(*mut SCShareableContent, *mut NSError) + Send + 'static,
     {
-        let block = StackBlock::new(move |content: *mut SCShareableContent, error: *mut NSError| {
-            let error_ref = if error.is_null() { None } else { Some(&*error) };
-            let content_opt = if content.is_null() { None } else { Some(content) };
-            completion(content_opt, error_ref);
+        use std::sync::{Arc, Mutex};
+        
+        let completion = Arc::new(Mutex::new(Some(completion)));
+        
+        let block = StackBlock::new({
+            let completion = completion.clone();
+            move |content: *mut SCShareableContent, error: *mut NSError| {
+                if let Some(completion) = completion.lock().unwrap().take() {
+                    completion(content, error);
+                }
+            }
         });
         let block = block.copy();
         

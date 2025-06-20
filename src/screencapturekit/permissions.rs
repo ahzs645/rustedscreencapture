@@ -4,6 +4,7 @@
 use napi::{Result, Status, Error};
 use super::types::PermissionStatus;
 use super::foundation::PermissionHelpers;
+use napi::bindgen_prelude::*;
 
 /// Permission manager for ScreenCaptureKit functionality
 pub struct PermissionManager;
@@ -134,4 +135,20 @@ impl PermissionManager {
     fn get_permission_instructions() -> String {
         "Open System Preferences > Security & Privacy > Privacy > Screen Recording and enable permission for this application".to_string()
     }
+}
+
+/// Check screen recording permission
+pub fn check_screen_recording_permission() -> Result<bool> {
+    // For now, return true as a placeholder
+    // In a real implementation, this would use AVCaptureDevice or CGDisplayStream APIs
+    println!("🔐 Checking screen recording permission (placeholder)");
+    Ok(true)
+}
+
+/// Request screen recording permission
+pub fn request_screen_recording_permission() -> Result<bool> {
+    // For now, return true as a placeholder
+    // In a real implementation, this would trigger the system permission dialog
+    println!("🔐 Requesting screen recording permission (placeholder)");
+    Ok(true)
 } 

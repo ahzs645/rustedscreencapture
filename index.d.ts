@@ -26,84 +26,21 @@ export interface RecordingConfiguration {
   pixelFormat?: string
   colorSpace?: string
 }
-export const K_CV_PIXEL_FORMAT_TYPE_32_BGRA: number
-export const K_CG_COLOR_SPACE_SRGB: number
-export const K_CG_COLOR_SPACE_DISPLAY_P3: number
 export const kCVPixelFormatType_32BGRA: number
 export const kCGColorSpaceSRGB: number
-export interface DisplayInfo {
-  id: number
-  name: string
-  width: number
-  height: number
-}
-export interface WindowInfo {
-  id: number
-  title: string
-  width: number
-  height: number
-}
 export declare function initScreencapturekit(): void
 export declare function getVersion(): string
 export declare function checkScreenRecordingPermission(): boolean
 export declare function requestScreenRecordingPermission(): boolean
 export declare function checkMacosVersion(): string
-export declare function testPermissionsAndApi(): string
-/** Test function for the segfault-safe ScreenCaptureKit implementation */
-export declare function testScreencapturekitWithTimeout(): string
-export declare function testPhase2Implementation(): string
-export declare class ContentManager {
-  constructor()
-  getShareableContent(): ShareableContent
-  getShareableContentSync(): ShareableContent
-}
-export declare class RealContentFilter {
-  constructor()
-  initWithDisplay(display: DisplayInfo): void
-  isValid(): boolean
-}
-export declare class RealStreamManager {
-  constructor()
-  initializeStream(contentFilter: RealContentFilter, streamConfig: string, outputPath: string): void
-  startCapture(): void
-  stopCapture(): void
-  getCaptureStats(): string
-}
-export declare class ShareableContent {
-  constructor()
-  getDisplays(): Array<DisplayInfo>
-  getWindows(): Array<WindowInfo>
-  get displays(): Array<DisplayInfo>
-  get windows(): Array<WindowInfo>
-  hasDisplay(displayId: number): boolean
-  hasWindow(windowId: number): boolean
-  getDisplayInfo(displayId: number): DisplayInfo | null
-  getWindowInfo(windowId: number): WindowInfo | null
-}
+/** Async-only ScreenCaptureKit recorder with real implementation */
 export declare class ScreenCaptureKitRecorder {
   constructor()
-  getAvailableScreens(): Array<ScreenSource>
-  /** Improved version that properly handles ScreenCaptureKit's async nature with timeout */
-  getAvailableScreensWithTimeout(timeoutMs?: number | undefined | null): Array<ScreenSource>
-  getAvailableAudioDevices(): Array<AudioDevice>
-  startRecording(screenId: string, config: RecordingConfiguration): void
-  stopRecording(): string
-  isRecording(): boolean
+  /** Get available screens using real ScreenCaptureKit async APIs */
+  getAvailableScreens(): Promise<Array<ScreenSource>>
+  /** Start recording using real ScreenCaptureKit async APIs */
+  startRecording(screenId: string, config: RecordingConfiguration): Promise<string>
+  stopRecording(): Promise<string>
+  isRecording(): Promise<boolean>
   getStatus(): string
-}
-export declare class AudioManager {
-  constructor()
-  getAvailableAudioDevices(): Array<AudioDevice>
-  configureAudioSession(): void
-}
-export declare class IntegratedRecordingManager {
-  constructor()
-  initialize(): void
-  startRecording(config: RecordingConfiguration): void
-  stopRecording(): string
-  isRecording(): boolean
-  getRecordingStats(): string
-  getPermissionStatus(): string
-  getAvailableScreens(): Array<ScreenSource>
-  getAvailableWindows(): Array<ScreenSource>
 }
