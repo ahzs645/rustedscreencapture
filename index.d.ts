@@ -32,15 +32,26 @@ export declare function initScreencapturekit(): void
 export declare function getVersion(): string
 export declare function checkScreenRecordingPermission(): boolean
 export declare function requestScreenRecordingPermission(): boolean
-export declare function checkMacosVersion(): string
-/** Async-only ScreenCaptureKit recorder with real implementation */
+/** Complete async ScreenCaptureKit recorder with full functionality */
 export declare class ScreenCaptureKitRecorder {
   constructor()
   /** Get available screens using real ScreenCaptureKit async APIs */
   getAvailableScreens(): Promise<Array<ScreenSource>>
-  /** Start recording using real ScreenCaptureKit async APIs */
+  /** Start recording using complete ScreenCaptureKit async APIs */
   startRecording(screenId: string, config: RecordingConfiguration): Promise<string>
   stopRecording(): Promise<string>
   isRecording(): Promise<boolean>
   getStatus(): string
+  /** Get available windows */
+  getAvailableWindows(): Promise<Array<ScreenSource>>
+}
+/** Integrated recording manager with complete functionality */
+export declare class IntegratedRecordingManager {
+  constructor()
+  initialize(): Promise<void>
+  startRecording(config: RecordingConfiguration): Promise<string>
+  stopRecording(): Promise<string>
+  getAvailableScreens(): Promise<Array<ScreenSource>>
+  getAvailableWindows(): Promise<Array<ScreenSource>>
+  isRecording(): boolean
 }

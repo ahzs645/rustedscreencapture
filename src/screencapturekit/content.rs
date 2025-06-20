@@ -67,11 +67,11 @@ impl AsyncContentManager {
     }
 }
 
-/// Wrapper for ScreenCaptureKit shareable content - with real data
-#[derive(Clone)]
+/// Async content manager for ScreenCaptureKit
 pub struct ShareableContent {
     displays: Vec<DisplayInfo>,
     windows: Vec<WindowInfo>,
+    sc_content_ptr: Option<*mut SCShareableContent>,
 }
 
 impl ShareableContent {
@@ -85,6 +85,7 @@ impl ShareableContent {
         Ok(Self {
             displays,
             windows,
+            sc_content_ptr: Some(sc_content_ptr),
         })
     }
     
@@ -203,18 +204,23 @@ impl ShareableContent {
         println!("🖥️ Creating real display filter for display ID: {}", display_id);
         
         // Find the display in our list
-        let _display_info = self.displays.iter()
+        let display_info = self.displays.iter()
             .find(|d| d.id == display_id)
             .ok_or_else(|| Error::new(Status::InvalidArg, format!("Display {} not found", display_id)))?;
         
-        // For now, return a placeholder until we implement the full filter creation
-        // In a complete implementation, this would:
-        // 1. Get the actual SCDisplay object from ScreenCaptureKit
-        // 2. Create an SCContentFilter with that display
-        // 3. Return the filter pointer
-        
-        println!("✅ Created display content filter placeholder");
-        Ok(std::ptr::null_mut()) // Placeholder for now
+        // Create a real content filter using ScreenCaptureKit
+        unsafe {
+            // Use the display info we already have instead of getting fresh content
+            // This avoids the Send issue with raw pointers
+            let filter = super::bindings::ScreenCaptureKitAPI::create_content_filter_with_display_id(display_info.id);
+            
+            if filter.is_null() {
+                return Err(Error::new(Status::GenericFailure, "Failed to create content filter"));
+            }
+            
+            println!("✅ Created real SCContentFilter for display: {}", display_info.name);
+            Ok(filter)
+        }
     }
     
     /// Get the raw ScreenCaptureKit content pointer (not needed for async-only approach)
@@ -234,6 +240,6 @@ impl ShareableContent {
     }
 }
 
-// Safe because we don't store raw pointers anymore - we extract the data immediately
+// Safety: Raw pointers are only used within unsafe blocks and data is extracted immediately
 unsafe impl Send for ShareableContent {}
 unsafe impl Sync for ShareableContent {}

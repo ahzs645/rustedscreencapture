@@ -310,13 +310,13 @@ if (!nativeBinding) {
   throw new Error(`Failed to load native binding`)
 }
 
-const { ScreenCaptureKitRecorder, kCVPixelFormatType_32BGRA, kCGColorSpaceSRGB, initScreencapturekit, getVersion, checkScreenRecordingPermission, requestScreenRecordingPermission, checkMacosVersion } = nativeBinding
+const { ScreenCaptureKitRecorder, IntegratedRecordingManager, kCVPixelFormatType_32BGRA, kCGColorSpaceSRGB, initScreencapturekit, getVersion, checkScreenRecordingPermission, requestScreenRecordingPermission } = nativeBinding
 
 module.exports.ScreenCaptureKitRecorder = ScreenCaptureKitRecorder
+module.exports.IntegratedRecordingManager = IntegratedRecordingManager
 module.exports.kCVPixelFormatType_32BGRA = kCVPixelFormatType_32BGRA
 module.exports.kCGColorSpaceSRGB = kCGColorSpaceSRGB
 module.exports.initScreencapturekit = initScreencapturekit
 module.exports.getVersion = getVersion
 module.exports.checkScreenRecordingPermission = checkScreenRecordingPermission
 module.exports.requestScreenRecordingPermission = requestScreenRecordingPermission
-module.exports.checkMacosVersion = checkMacosVersion

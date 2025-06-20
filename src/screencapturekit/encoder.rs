@@ -30,6 +30,11 @@ pub struct VideoEncoder {
     start_time: Option<CMTime>,
 }
 
+// Safety: Raw pointers are only used within unsafe blocks and the encoder
+// is designed for single-threaded use within a Mutex
+unsafe impl Send for VideoEncoder {}
+unsafe impl Sync for VideoEncoder {}
+
 impl VideoEncoder {
     pub fn new(output_path: &str, width: u32, height: u32, fps: u32) -> Result<Self> {
         unsafe {
@@ -97,7 +102,7 @@ impl VideoEncoder {
         }
     }
     
-    pub fn encode_frame(&mut self, pixel_buffer: *mut CVPixelBuffer, presentation_time: CMTime) -> Result<()> {
+    pub fn encode_pixel_buffer(&mut self, pixel_buffer: *mut CVPixelBuffer, presentation_time: CMTime) -> Result<()> {
         unsafe {
             if !self.is_recording {
                 return Ok(());
@@ -147,6 +152,38 @@ impl VideoEncoder {
             }
             
             Ok(())
+        }
+    }
+    
+    /// Encode frame from sample buffer (used by delegate)
+    pub fn encode_frame(&mut self, sample_buffer: &CMSampleBuffer) -> Result<()> {
+        unsafe {
+            if !self.is_recording {
+                return Ok(());
+            }
+            
+            // Extract pixel buffer from sample buffer
+            let pixel_buffer: *mut CVPixelBuffer = {
+                extern "C" {
+                    fn CMSampleBufferGetImageBuffer(sbuf: &CMSampleBuffer) -> *mut CVPixelBuffer;
+                }
+                CMSampleBufferGetImageBuffer(sample_buffer)
+            };
+            
+            if pixel_buffer.is_null() {
+                return Err(Error::new(Status::GenericFailure, "No pixel buffer in sample"));
+            }
+            
+            // Get presentation time
+            let presentation_time: CMTime = {
+                extern "C" {
+                    fn CMSampleBufferGetPresentationTimeStamp(sbuf: &CMSampleBuffer) -> CMTime;
+                }
+                CMSampleBufferGetPresentationTimeStamp(sample_buffer)
+            };
+            
+            // Use the pixel buffer encoding method
+            self.encode_pixel_buffer(pixel_buffer, presentation_time)
         }
     }
     
@@ -220,6 +257,11 @@ pub struct AudioEncoder {
     is_recording: bool,
     sample_count: u64,
 }
+
+// Safety: Raw pointers are only used within unsafe blocks and the encoder
+// is designed for single-threaded use within a Mutex
+unsafe impl Send for AudioEncoder {}
+unsafe impl Sync for AudioEncoder {}
 
 impl AudioEncoder {
     pub fn new(output_path: &str, sample_rate: u32, channels: u32) -> Result<Self> {
@@ -309,6 +351,11 @@ impl AudioEncoder {
             
             Ok(())
         }
+    }
+    
+    /// Encode frame from sample buffer (used by delegate) - alias for encode_audio_buffer
+    pub fn encode_frame(&mut self, sample_buffer: &CMSampleBuffer) -> Result<()> {
+        self.encode_audio_buffer(sample_buffer)
     }
     
     pub fn finalize_encoding(&mut self) -> Result<String> {

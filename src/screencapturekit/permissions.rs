@@ -135,6 +135,20 @@ impl PermissionManager {
     fn get_permission_instructions() -> String {
         "Open System Preferences > Security & Privacy > Privacy > Screen Recording and enable permission for this application".to_string()
     }
+
+    /// Check screen recording permission status
+    pub fn check_screen_recording_permission() -> bool {
+        Self::ensure_permission().is_ok()
+    }
+    
+    /// Request screen recording permission
+    pub fn request_screen_recording_permission() -> Result<bool> {
+        match Self::request_permission() {
+            Ok(PermissionStatus::Granted) => Ok(true),
+            Ok(_) => Ok(false),
+            Err(e) => Err(e),
+        }
+    }
 }
 
 /// Check screen recording permission

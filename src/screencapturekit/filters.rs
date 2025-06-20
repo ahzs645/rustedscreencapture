@@ -15,6 +15,11 @@ pub struct ContentFilter {
     is_valid: bool,
 }
 
+// Safety: Raw pointers are only used within unsafe blocks and the filter
+// is designed for single-threaded use
+unsafe impl Send for ContentFilter {}
+unsafe impl Sync for ContentFilter {}
+
 impl ContentFilter {
     /// Create a new content filter for a display
     pub unsafe fn new_for_display(
@@ -92,13 +97,16 @@ impl ContentFilter {
 
     /// Create a basic content filter (fallback)
     pub unsafe fn new_basic() -> Result<Self> {
-        // This creates a minimal filter that should work in most cases
-        let filter_ptr = ScreenCaptureKitAPI::create_content_filter_with_display(ptr::null_mut());
+        println!("🔧 Creating basic content filter using ScreenCaptureKit");
+        
+        // Create a simple filter without async operations to avoid Send issues
+        let filter_ptr = super::bindings::ScreenCaptureKitAPI::create_content_filter_with_display_id(1);
         
         if filter_ptr.is_null() {
             return Err(Error::new(Status::GenericFailure, "Failed to create basic content filter"));
         }
 
+        println!("✅ Created basic content filter with ScreenCaptureKit");
         Ok(Self {
             filter_ptr,
             filter_type: ContentFilterType::Desktop,

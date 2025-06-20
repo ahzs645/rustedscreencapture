@@ -6,14 +6,14 @@ use objc2_core_media::{CMSampleBuffer, CMTime};
 use objc2_core_video::{CVImageBuffer, CVPixelBuffer};
 use napi::{Result, Status, Error};
 
-// use super::encoder::{VideoEncoder, AudioEncoder};  // DISABLED: Encoder module disabled
+use super::encoder::{VideoEncoder, AudioEncoder};  // RE-ENABLED: Encoder module
 use super::types::{SCStream, SCStreamDelegate, SCStreamOutputType};
 
 // Real SCStreamDelegate implementation using objc2 bindings
 pub struct RealStreamDelegate {
     output_path: String,
-    // video_encoder: Option<Arc<Mutex<VideoEncoder>>>,  // DISABLED
-    // audio_encoder: Option<Arc<Mutex<AudioEncoder>>>,  // DISABLED
+    video_encoder: Option<Arc<Mutex<VideoEncoder>>>,
+    audio_encoder: Option<Arc<Mutex<AudioEncoder>>>,
     frame_count: Arc<Mutex<u64>>,
     audio_frame_count: Arc<Mutex<u64>>,
     is_recording: Arc<Mutex<bool>>,
@@ -22,37 +22,37 @@ pub struct RealStreamDelegate {
 }
 
 impl RealStreamDelegate {
-    pub fn new(output_path: String, is_recording: Arc<Mutex<bool>>, _width: u32, _height: u32, _fps: u32) -> Self {
+    pub fn new(output_path: String, is_recording: Arc<Mutex<bool>>, width: u32, height: u32, fps: u32) -> Self {
         println!("🎬 Creating RealStreamDelegate for recording: {}", output_path);
         
         // Create video encoder
-        // let video_encoder = VideoEncoder::new(&format!("{}_video.mp4", output_path), width, height, fps)
-        //     .map(|encoder| {
-        //         println!("✅ Video encoder created: {}x{} @ {}fps", width, height, fps);
-        //         Arc::new(Mutex::new(encoder))
-        //     })
-        //     .map_err(|e| {
-        //         println!("⚠️ Video encoder creation failed: {}", e);
-        //         e
-        //     })
-        //     .ok();
+        let video_encoder = VideoEncoder::new(&format!("{}_video.mp4", output_path), width, height, fps)
+            .map(|encoder| {
+                println!("✅ Video encoder created: {}x{} @ {}fps", width, height, fps);
+                Arc::new(Mutex::new(encoder))
+            })
+            .map_err(|e| {
+                println!("⚠️ Video encoder creation failed: {}", e);
+                e
+            })
+            .ok();
         
         // Create audio encoder
-        // let audio_encoder = AudioEncoder::new(&format!("{}_audio.mp4", output_path), 48000, 2)
-        //     .map(|encoder| {
-        //         println!("✅ Audio encoder created: 48kHz stereo");
-        //         Arc::new(Mutex::new(encoder))
-        //     })
-        //     .map_err(|e| {
-        //         println!("⚠️ Audio encoder creation failed: {}", e);
-        //         e
-        //     })
-        //     .ok();
+        let audio_encoder = AudioEncoder::new(&format!("{}_audio.mp4", output_path), 48000, 2)
+            .map(|encoder| {
+                println!("✅ Audio encoder created: 48kHz stereo");
+                Arc::new(Mutex::new(encoder))
+            })
+            .map_err(|e| {
+                println!("⚠️ Audio encoder creation failed: {}", e);
+                e
+            })
+            .ok();
         
         Self {
             output_path: output_path.clone(),
-            // video_encoder,
-            // audio_encoder,
+            video_encoder,
+            audio_encoder,
             frame_count: Arc::new(Mutex::new(0)),
             audio_frame_count: Arc::new(Mutex::new(0)),
             is_recording,
@@ -104,8 +104,7 @@ impl RealStreamDelegate {
         }
         
         // Process the video frame
-        // DISABLED: Encoder functionality removed
-        self.process_video_sample_buffer(sample_buffer, "disabled");
+        self.process_video_sample_buffer(sample_buffer, "enabled");
     }
     
     /// Process real audio sample buffer from ScreenCaptureKit
@@ -117,8 +116,7 @@ impl RealStreamDelegate {
             }
         }
         
-        // DISABLED: Encoder functionality removed
-        self.process_audio_sample_buffer(sample_buffer, "disabled");
+        self.process_audio_sample_buffer(sample_buffer, "enabled");
     }
     
     /// Validate video frame data without encoding
@@ -170,14 +168,26 @@ impl RealStreamDelegate {
             }
             
             // Encode the frame
-            // DISABLED: Encoder functionality removed
-            println!("📹 Video frame received (encoding disabled)");
+            if let Some(ref encoder) = self.video_encoder {
+                if let Ok(mut encoder) = encoder.lock() {
+                    match encoder.encode_frame(sample_buffer) {
+                        Ok(()) => {}, // Frame encoded successfully
+                        Err(e) => println!("❌ Video frame encoding failed: {}", e),
+                    }
+                }
+            }
         }
     }
     
-    fn process_audio_sample_buffer(&self, _sample_buffer: &CMSampleBuffer, _encoder: &str) {
-        // DISABLED: Encoder functionality removed
-        println!("🔊 Audio sample received (encoding disabled)");
+    fn process_audio_sample_buffer(&self, sample_buffer: &CMSampleBuffer, _encoder: &str) {
+        if let Some(ref encoder) = self.audio_encoder {
+            if let Ok(mut encoder) = encoder.lock() {
+                match encoder.encode_frame(sample_buffer) {
+                    Ok(()) => {}, // Frame encoded successfully
+                    Err(e) => println!("❌ Audio frame encoding failed: {}", e),
+                }
+            }
+        }
     }
     
     pub fn handle_stream_stopped(&self, error: Option<&NSError>) {
@@ -193,23 +203,23 @@ impl RealStreamDelegate {
         }
         
         // Finalize encoders
-        // if let Some(ref video_encoder) = self.video_encoder {
-        //     if let Ok(mut encoder) = video_encoder.lock() {
-        //         match encoder.finalize_encoding() {
-        //             Ok(path) => println!("✅ Video encoding finalized: {}", path),
-        //             Err(e) => println!("❌ Video encoding finalization failed: {}", e),
-        //         }
-        //     }
-        // }
+        if let Some(ref video_encoder) = self.video_encoder {
+            if let Ok(mut encoder) = video_encoder.lock() {
+                match encoder.finalize_encoding() {
+                    Ok(path) => println!("✅ Video encoding finalized: {}", path),
+                    Err(e) => println!("❌ Video encoding finalization failed: {}", e),
+                }
+            }
+        }
         
-        // if let Some(ref audio_encoder) = self.audio_encoder {
-        //     if let Ok(mut encoder) = audio_encoder.lock() {
-        //         match encoder.finalize_encoding() {
-        //             Ok(path) => println!("✅ Audio encoding finalized: {}", path),
-        //             Err(e) => println!("❌ Audio encoding finalization failed: {}", e),
-        //         }
-        //     }
-        // }
+        if let Some(ref audio_encoder) = self.audio_encoder {
+            if let Ok(mut encoder) = audio_encoder.lock() {
+                match encoder.finalize_encoding() {
+                    Ok(path) => println!("✅ Audio encoding finalized: {}", path),
+                    Err(e) => println!("❌ Audio encoding finalization failed: {}", e),
+                }
+            }
+        }
         
         // Print final statistics
         self.print_final_stats();

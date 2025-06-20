@@ -10,24 +10,29 @@ pub mod types;          // Shared types and constants
 pub mod content;        // Content enumeration and management
 pub mod filters;        // Content filter creation and management
 
-// Recording Layer - temporarily commented out for compilation
-// pub mod recording;      // High-level recording management
+// Recording Layer - re-enabled for full functionality
+pub mod recording;      // High-level recording management
 pub mod permissions;    // Permission management
 
-// Legacy modules (to be refactored) - temporarily commented out
+// Stream Management Layer
 pub mod audio;
 pub mod delegate;
 pub mod encoder;
-// pub mod permission_manager;
-// pub mod recording_manager;
 pub mod stream;
 pub mod stream_output;
 pub mod transcription;
 
+// Permission management (legacy compatibility)
+pub mod permission_manager;
+pub mod recording_manager;
+
 // Re-export main types and functions for easy access
 pub use content::{AsyncContentManager, ShareableContent};
-pub use types::{DisplayInfo, WindowInfo};
+pub use types::{DisplayInfo, WindowInfo, RecordingState, SCError};
+pub use recording::RecordingManager;
+pub use filters::{ContentFilter, ContentFilterFactory};
+pub use permissions::PermissionManager;
 
-// Legacy compatibility exports (can be removed later)
-// pub use stream_output::StreamOutput;
+// Stream output for recording
+pub use stream_output::StreamOutput;
  

@@ -39,6 +39,11 @@ pub struct StreamOutput {
     capture_audio: bool,
 }
 
+// Safety: Raw pointers in encoders are only used within unsafe blocks
+// and the struct is designed for single-threaded use within a Mutex
+unsafe impl Send for StreamOutput {}
+unsafe impl Sync for StreamOutput {}
+
 impl StreamOutput {
     pub fn new(output_path: String, width: u32, height: u32, fps: u32, capture_audio: bool) -> Result<Self> {
         println!("🎬 Creating StreamOutput for: {}", output_path);

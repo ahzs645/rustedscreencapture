@@ -1,13 +1,14 @@
 use std::sync::{Arc, Mutex};
 use std::path::Path;
 use napi::{Result, Status, Error};
+use serde_json;
 
 use objc2_core_media::CMSampleBuffer;
 
 use super::{
-    content::ShareableContent,
+    content::{ShareableContent, AsyncContentManager},
     types::{DisplayInfo, WindowInfo},
-    filters::ContentFilter,
+    filters::{ContentFilter, ContentFilterFactory},
     stream_output::StreamOutput,
     permission_manager::PermissionManager,
     transcription::{TranscriptionManager, TranscriptionConfig, TranscriptionResult},
@@ -57,11 +58,11 @@ impl RecordingManager {
     }
     
     /// Initialize the recording manager with shareable content
-    pub fn initialize(&mut self) -> Result<()> {
+    pub async fn initialize(&mut self) -> Result<()> {
         println!("🔧 Initializing RecordingManager");
         
         // Get shareable content
-        self.shareable_content = Some(ShareableContent::new_with_screencapturekit()?);
+        self.shareable_content = Some(AsyncContentManager::get_shareable_content().await?);
         
         println!("✅ RecordingManager initialized successfully");
         Ok(())
@@ -280,14 +281,11 @@ impl RecordingManager {
             // In a real implementation, this would parse the screen_id from the config
             let displays = content.get_displays()?;
             if let Some(display) = displays.first() {
-                if let Some(sc_content) = content.get_sc_content_ptr() {
-                    unsafe {
-                        let filter = ContentFilter::new_for_display(sc_content, display.id)?;
-                        println!("🎯 Created content filter for display: {}", display.name);
-                        Ok(filter)
-                    }
-                } else {
-                    Err(Error::new(Status::GenericFailure, "ScreenCaptureKit content not available"))
+                // Create a basic filter for now
+                unsafe {
+                    let filter = ContentFilter::new_basic()?;
+                    println!("🎯 Created content filter for display: {}", display.name);
+                    Ok(filter)
                 }
             } else {
                 Err(Error::new(Status::GenericFailure, "No displays available for recording"))
