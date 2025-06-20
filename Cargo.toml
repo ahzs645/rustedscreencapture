@@ -44,6 +44,7 @@ chrono = "0.4"
 
 [build-dependencies]
 napi-build = "2.0"
+cc = "1.0"
 
 [profile.release]
 lto = true

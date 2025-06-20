@@ -21,6 +21,7 @@ pub mod encoder;
 pub mod stream;
 pub mod stream_output;
 pub mod transcription;
+pub mod objc_bridge_rust;
 
 // Permission management (legacy compatibility)
 pub mod permission_manager;

@@ -13,6 +13,7 @@ use super::bindings::ScreenCaptureKitAPI;
 use super::permissions::PermissionManager;
 use super::delegate::RealStreamDelegate;
 use super::stream_output::StreamOutput;
+use super::objc_bridge_rust::ObjCDelegateBridge;
 
 // Add the constant
 pub const kCVPixelFormatType_32BGRA: u32 = 1111970369; // 'BGRA'
@@ -21,7 +22,8 @@ pub const kCVPixelFormatType_32BGRA: u32 = 1111970369; // 'BGRA'
 pub struct RecordingManager {
     stream: Option<*mut SCStream>,
     content_filter: Option<ContentFilter>,
-    delegate: Option<RealStreamDelegate>,
+    delegate: Option<Arc<RealStreamDelegate>>,
+    delegate_bridge: Option<Arc<ObjCDelegateBridge>>,
     stream_output: Option<Arc<Mutex<StreamOutput>>>,
     is_recording: Arc<Mutex<bool>>,
     recording_config: Option<RecordingConfiguration>,
@@ -41,6 +43,7 @@ impl RecordingManager {
             stream: None,
             content_filter: None,
             delegate: None,
+            delegate_bridge: None,
             stream_output: None,
             is_recording: Arc::new(Mutex::new(false)),
             recording_config: None,
@@ -110,14 +113,20 @@ impl RecordingManager {
         self.stream_output = Some(stream_output.clone());
         
         // Create delegate
-        let delegate = RealStreamDelegate::new(
+        let delegate = Arc::new(RealStreamDelegate::new(
             config.output_path.clone(),
             self.is_recording.clone(),
             config.width.unwrap_or(1920),
             config.height.unwrap_or(1080),
             config.fps.unwrap_or(30),
-        );
+        ));
+        
+        // Create the Objective-C bridge for the delegate
+        let bridge = ObjCDelegateBridge::new(delegate.clone())
+            .map_err(|e| Error::new(Status::GenericFailure, format!("Failed to create delegate bridge: {}", e)))?;
+        
         self.delegate = Some(delegate);
+        self.delegate_bridge = Some(Arc::new(bridge));
         
         // Create stream
         let stream = unsafe {
@@ -279,16 +288,21 @@ impl RecordingManager {
         content_filter: *mut SCContentFilter,
         configuration: *mut SCStreamConfiguration,
     ) -> Result<*mut SCStream> {
-        // Create delegate object
-        let delegate = if let Some(ref delegate) = self.delegate {
-            delegate.create_objc_delegate()
+        // Get the Objective-C delegate from the bridge
+        let delegate = if let Some(ref bridge) = self.delegate_bridge {
+            bridge.as_objc_delegate()
         } else {
             // Create a minimal NSObject delegate as fallback
             use objc2::{msg_send, class};
             let delegate_class = class!(NSObject);
             let delegate: *mut objc2::runtime::AnyObject = msg_send![delegate_class, new];
+            println!("⚠️ Using fallback NSObject delegate - callbacks will not work!");
             delegate
         };
+
+        if delegate.is_null() {
+            return Err(Error::new(Status::GenericFailure, "Failed to get delegate from bridge"));
+        }
 
         let stream = ScreenCaptureKitAPI::create_stream(content_filter, configuration, delegate);
 
@@ -296,7 +310,7 @@ impl RecordingManager {
             return Err(Error::new(Status::GenericFailure, "Failed to create stream"));
         }
 
-        println!("🎬 Created ScreenCaptureKit stream successfully");
+        println!("🎬 Created ScreenCaptureKit stream with proper delegate bridge");
         Ok(stream)
     }
 
@@ -328,6 +342,7 @@ impl RecordingManager {
     fn cleanup(&mut self) {
         self.stream = None;
         self.content_filter = None;
+        self.delegate_bridge = None; // Release bridge first
         self.delegate = None;
         self.stream_output = None;
         self.recording_config = None;
