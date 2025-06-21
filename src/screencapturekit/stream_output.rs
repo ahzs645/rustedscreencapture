@@ -464,6 +464,11 @@ impl StreamOutput {
         
         (video_frames, audio_samples, is_recording)
     }
+    
+    /// Get the output path
+    pub fn get_output_path(&self) -> &str {
+        &self.output_path
+    }
 }
 
 /// Create an Objective-C delegate object that bridges to our Rust StreamOutput

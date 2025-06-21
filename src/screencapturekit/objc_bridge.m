@@ -59,6 +59,39 @@
     }
 }
 
+#pragma mark - PRODUCTION-READY: Stream Capture Helper
+
++ (void)startStreamCapture:(SCStream*)stream 
+            withCompletion:(RustStreamStartCallback)completion
+                   context:(void*)context {
+    
+    os_log(OS_LOG_DEFAULT, "🚀 PRODUCTION: Starting stream capture with proper completion handler");
+    
+    if (!stream || !completion) {
+        os_log_error(OS_LOG_DEFAULT, "❌ PRODUCTION ERROR: Invalid stream or completion handler");
+        if (completion) {
+            NSError *error = [NSError errorWithDomain:@"ScreenCaptureKitError" 
+                                               code:1002 
+                                           userInfo:@{NSLocalizedDescriptionKey: @"Invalid parameters"}];
+            completion(context, error);
+        }
+        return;
+    }
+    
+    // CRITICAL FIX: Use the proper startCaptureWithCompletionHandler method
+    // This is what enables the delegate callbacks to be triggered
+    [stream startCaptureWithCompletionHandler:^(NSError * _Nullable error) {
+        if (error) {
+            os_log_error(OS_LOG_DEFAULT, "❌ PRODUCTION: Stream capture failed: %@", error);
+        } else {
+            os_log(OS_LOG_DEFAULT, "✅ PRODUCTION: Stream capture started successfully - callbacks enabled");
+        }
+        
+        // Call the Rust completion callback
+        completion(context, error);
+    }];
+}
+
 - (void)dealloc {
     os_log(OS_LOG_DEFAULT, "🗑️ SCStreamDelegateBridge deallocated");
 }
@@ -97,4 +130,21 @@ void release_delegate_bridge(void* bridge) {
     } else {
         os_log_error(OS_LOG_DEFAULT, "❌ Attempted to release NULL delegate bridge");
     }
+}
+
+#pragma mark - PRODUCTION-READY: C Interface for Stream Capture
+
+void start_stream_capture_with_handler(void* stream, 
+                                     RustStreamStartCallback callback,
+                                     void* context) {
+    
+    if (!stream || !callback) {
+        os_log_error(OS_LOG_DEFAULT, "❌ PRODUCTION: Invalid stream or callback for capture start");
+        return;
+    }
+    
+    SCStream* scStream = (__bridge SCStream*)stream;
+    [SCStreamDelegateBridge startStreamCapture:scStream 
+                                withCompletion:callback 
+                                       context:context];
 } 

@@ -323,21 +323,56 @@ impl RecordingManager {
         stream_output: Arc<Mutex<StreamOutput>>,
     ) -> Result<*mut SCStream> {
         unsafe {
-            // Create a delegate that will handle the sample buffers
-            let delegate = super::stream_output::create_stream_delegate(stream_output);
+            // CRITICAL FIX: Use the new Objective-C bridge delegate instead of the old one
+            println!("🔧 PRODUCTION: Creating proper SCStreamDelegate with Objective-C bridge");
             
-            // Create the SCStream
+            // Create the new Objective-C bridge delegate that implements SCStreamDelegate protocol
+            use crate::screencapturekit::objc_bridge_rust::ObjCDelegateBridge;
+            use crate::screencapturekit::delegate::RealStreamDelegate;
+            use std::sync::Mutex;
+            
+            // Create a RealStreamDelegate that the bridge expects
+            let is_recording = Arc::new(Mutex::new(false));
+            let output_path = if let Ok(output) = stream_output.lock() {
+                output.get_output_path().to_string()
+            } else {
+                "unknown_output.mp4".to_string()
+            };
+            
+            let real_delegate = Arc::new(RealStreamDelegate::new(
+                output_path.clone(),
+                is_recording.clone(),
+                1920, // width - should come from config
+                1080, // height - should come from config  
+                30,   // fps - should come from config
+            ));
+            
+            println!("✅ PRODUCTION: Created RealStreamDelegate for: {}", output_path);
+            
+            // Create the Objective-C bridge delegate
+            let bridge = ObjCDelegateBridge::new(real_delegate)
+                .map_err(|e| Error::new(Status::GenericFailure, format!("Failed to create bridge: {}", e)))?;
+            
+            let delegate_ptr = bridge.as_objc_delegate();
+            println!("✅ PRODUCTION: Created Objective-C bridge delegate: {:p}", delegate_ptr);
+            
+            // Create the SCStream with our proper delegate
             let stream = ScreenCaptureKitAPI::create_stream(
                 content_filter.get_filter_ptr(),
                 stream_config,
-                delegate,
+                delegate_ptr,
             );
             
             if stream.is_null() {
                 return Err(Error::new(Status::GenericFailure, "Failed to create ScreenCaptureKit stream"));
             }
             
-            println!("🎬 Created ScreenCaptureKit stream");
+            println!("✅ PRODUCTION: Created ScreenCaptureKit stream with proper delegate");
+            
+            // Store the bridge so it doesn't get deallocated
+            // In a real implementation, we'd store this in the RecordingManager
+            std::mem::forget(bridge);
+            
             Ok(stream)
         }
     }

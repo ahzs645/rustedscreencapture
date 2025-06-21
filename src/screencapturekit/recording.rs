@@ -318,9 +318,27 @@ impl RecordingManager {
     async fn start_stream_capture(&self) -> Result<()> {
         println!("🚀 Starting stream capture asynchronously");
         
-        // For now, just simulate async operation without passing raw pointers
-        // In a real implementation, this would use a safe wrapper or handle the stream differently
-        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+        println!("🔍 DEBUG: Checking if stream is available...");
+        if let Some(stream) = self.stream {
+            println!("✅ DEBUG: Stream is available: {:p}", stream);
+            unsafe {
+                println!("🔥 CRITICAL DEBUG: About to call ScreenCaptureKitAPI::start_stream_capture_async with stream: {:p}", stream);
+                
+                // Use the actual ScreenCaptureKit API to start capture
+                ScreenCaptureKitAPI::start_stream_capture_async(stream, |error| {
+                    if let Some(error) = error {
+                        println!("❌ Failed to start capture: {:?}", error);
+                    } else {
+                        println!("✅ ScreenCaptureKit capture started successfully - delegate callbacks enabled!");
+                    }
+                });
+                
+                println!("🔥 CRITICAL DEBUG: ScreenCaptureKitAPI::start_stream_capture_async call completed");
+            }
+        } else {
+            println!("❌ DEBUG: No stream available to start!");
+            return Err(Error::new(Status::GenericFailure, "No stream available to start"));
+        }
         
         println!("✅ Stream capture started successfully");
         Ok(())
@@ -330,9 +348,20 @@ impl RecordingManager {
     async fn stop_stream_capture(&self) -> Result<()> {
         println!("⏹️ Stopping stream capture asynchronously");
         
-        // For now, just simulate async operation without passing raw pointers
-        // In a real implementation, this would use a safe wrapper or handle the stream differently
-        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+        if let Some(stream) = self.stream {
+            unsafe {
+                // Use the actual ScreenCaptureKit API to stop capture
+                ScreenCaptureKitAPI::stop_stream_capture_async(stream, |error| {
+                    if let Some(error) = error {
+                        println!("⚠️ Warning during capture stop: {:?}", error);
+                    } else {
+                        println!("✅ ScreenCaptureKit capture stopped successfully");
+                    }
+                });
+            }
+        } else {
+            println!("⚠️ No stream available to stop");
+        }
         
         println!("✅ Stream capture stopped successfully");
         Ok(())

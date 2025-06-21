@@ -12,6 +12,9 @@ typedef void (*RustVideoCallback)(void* _Nonnull context, CMSampleBufferRef _Non
 typedef void (*RustAudioCallback)(void* _Nonnull context, CMSampleBufferRef _Nonnull sampleBuffer);
 typedef void (*RustStreamStoppedCallback)(void* _Nonnull context, NSError* _Nullable error);
 
+// PRODUCTION-READY: Stream capture completion callback
+typedef void (*RustStreamStartCallback)(void* context, NSError* _Nullable error);
+
 // Objective-C delegate bridge that implements SCStreamDelegate
 @interface SCStreamDelegateBridge : NSObject <SCStreamDelegate>
 
@@ -24,6 +27,11 @@ typedef void (*RustStreamStoppedCallback)(void* _Nonnull context, NSError* _Null
                   videoCallback:(RustVideoCallback _Nonnull)videoCallback
                   audioCallback:(RustAudioCallback _Nonnull)audioCallback
             streamStoppedCallback:(RustStreamStoppedCallback _Nonnull)streamStoppedCallback;
+
+// PRODUCTION-READY: Helper method for proper stream capture with completion handler
++ (void)startStreamCapture:(SCStream*)stream 
+            withCompletion:(RustStreamStartCallback)completion
+                   context:(void*)context;
 
 @end
 
@@ -40,6 +48,11 @@ void* _Nullable create_delegate_bridge(void* _Nonnull rust_context,
 
 // Release the delegate bridge
 void release_delegate_bridge(void* _Nullable bridge);
+
+// PRODUCTION-READY: C interface for proper stream capture
+void start_stream_capture_with_handler(void* stream, 
+                                     RustStreamStartCallback callback,
+                                     void* context);
 
 #ifdef __cplusplus
 }
